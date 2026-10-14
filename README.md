@@ -39,6 +39,12 @@ sudo apt install gdal-bin libgdal-dev libgeos-dev libproj-dev postgresql postgis
    python manage.py createsuperuser
    python manage.py collectstatic
 ```
+### Primer administrador
+1. `python manage.py createsuperuser`
+2. Entrar a `/admin/` con ese usuario → *User profiles* → abrir su perfil y
+   poner **Rol: Administrador** y **Estado de cuenta: Aprobada**.
+3. A partir de ahí, las cuentas nuevas se aprueban en "Cuentas Pendientes".
+
 5. Producción: ejecutar con Gunicorn detrás de Nginx y HTTPS.
 ```
    gunicorn siggrams.wsgi:application --bind 127.0.0.1:8000
