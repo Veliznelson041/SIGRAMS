@@ -1,0 +1,158 @@
+{% extends 'app_sigrams/base.html' %}
+
+{% block title %}Notificaciones - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-catamarca">Mis Notificaciones</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'marcar_todas_leidas' %}" class="btn btn-sm btn-outline-secondary me-2">
+            ✅ Marcar todas como leídas
+        </a>
+        <a href="{% url 'home' %}" class="btn btn-sm btn-catamarca">
+            ← Volver al inicio
+        </a>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Tipo</label>
+                <select name="tipo" class="form-control">
+                    <option value="">Todos los tipos</option>
+                    {% for tipo_id, tipo_nombre in tipos %}
+                    <option value="{{ tipo_id }}" {% if tipo_filtro == tipo_id %}selected{% endif %}>
+                        {{ tipo_nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Estado</label>
+                <select name="leida" class="form-control">
+                    <option value="">Todas</option>
+                    <option value="false" {% if leida_filtro == 'false' %}selected{% endif %}>No leídas</option>
+                    <option value="true" {% if leida_filtro == 'true' %}selected{% endif %}>Leídas</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-catamarca">Filtrar</button>
+                <a href="{% url 'lista_notificaciones' %}" class="btn btn-outline-secondary ms-2">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Estadísticas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="card-title">Total</h6>
+                <p class="card-text h4">{{ total_notificaciones }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h6 class="card-title">No leídas</h6>
+                <p class="card-text h4">{{ no_leidas }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de notificaciones -->
+<div class="card">
+    <div class="card-body">
+        {% if notificaciones %}
+            <div class="list-group">
+                {% for notificacion in notificaciones %}
+                <div class="list-group-item list-group-item-action {% if not notificacion.leida %}list-group-item-primary{% endif %}">
+                    <div class="d-flex w-100 justify-content-between align-items-center">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="me-2">
+                                    {% if notificacion.tipo == 'alerta' %}⚠️
+                                    {% elif notificacion.tipo == 'urgente' %}🚨
+                                    {% elif notificacion.tipo == 'exito' %}✅
+                                    {% elif notificacion.tipo == 'error' %}❌
+                                    {% else %}ℹ️{% endif %}
+                                </span>
+                                <h6 class="mb-0">{{ notificacion.titulo }}</h6>
+                                {% if not notificacion.leida %}
+                                <span class="badge bg-warning ms-2">NUEVO</span>
+                                {% endif %}
+                            </div>
+                            <p class="mb-1">{{ notificacion.mensaje }}</p>
+                            <small class="text-muted">{{ notificacion.tiempo_transcurrido }}</small>
+                        </div>
+                        <div class="ms-3">
+                            <a href="{% if notificacion.url %}{{ notificacion.url }}{% else %}#{% endif %}" 
+                               class="btn btn-sm btn-outline-primary me-1">
+                                Ver
+                            </a>
+                            {% if not notificacion.leida %}
+                            <form method="post" action="{% url 'marcar_notificacion_leida' notificacion.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                    ✅ Leída
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Paginación -->
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if notificaciones.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ notificaciones.previous_page_number }}{% if tipo_filtro %}&tipo={{ tipo_filtro }}{% endif %}{% if leida_filtro %}&leida={{ leida_filtro }}{% endif %}">
+                            Anterior
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in notificaciones.paginator.page_range %}
+                    {% if notificaciones.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                    {% elif num > notificaciones.number|add:'-3' and num < notificaciones.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if tipo_filtro %}&tipo={{ tipo_filtro }}{% endif %}{% if leida_filtro %}&leida={{ leida_filtro }}{% endif %}">
+                            {{ num }}
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                    
+                    {% if notificaciones.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ notificaciones.next_page_number }}{% if tipo_filtro %}&tipo={{ tipo_filtro }}{% endif %}{% if leida_filtro %}&leida={{ leida_filtro }}{% endif %}">
+                            Siguiente
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% else %}
+        <div class="text-center py-5">
+            <div class="mb-3">
+                <span style="font-size: 3rem;">📭</span>
+            </div>
+            <h4>No tienes notificaciones</h4>
+            <p class="text-muted">Cuando tengas notificaciones, aparecerán aquí.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

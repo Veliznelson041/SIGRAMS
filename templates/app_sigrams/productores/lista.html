@@ -1,0 +1,198 @@
+<!-- templates/productores/lista.html -->
+{% extends 'app_sigrams/base.html' %}
+
+{% block title %}Productores - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-catamarca">
+        <i class="fas fa-users"></i> Productores Registrados
+        <span class="badge bg-catamarca">{{ total_productores }}</span>
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'nuevo_productor' %}" class="btn btn-catamarca">
+            <i class="fas fa-plus"></i> Nuevo Productor
+        </a>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <input type="text" class="form-control" name="nombre" placeholder="Nombre o Apellido" 
+                       value="{{ request.GET.nombre }}">
+            </div>
+            <div class="col-md-2">
+                <input type="text" class="form-control" name="dni" placeholder="DNI" 
+                       value="{{ request.GET.dni }}">
+            </div>
+            <div class="col-md-3">
+                <input type="text" class="form-control" name="localidad" placeholder="Localidad" 
+                       value="{{ request.GET.localidad }}">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" name="estado">
+                    <option value="">Todos los estados</option>
+                    {% for estado in estados %}
+                    <option value="{{ estado.0 }}" {% if request.GET.estado == estado.0 %}selected{% endif %}>
+                        {{ estado.1 }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-catamarca w-100">
+                    <i class="fas fa-search"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="btn-group me-2">
+    <button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
+        📥 Exportar
+    </button>
+    <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="{% url 'reporte_productores_pdf' %}">PDF</a></li>
+        <li><a class="dropdown-item" href="{% url 'reporte_productores_excel' %}">Excel</a></li>
+    </ul>
+</div>
+
+<!-- Tabla de productores -->
+<div class="card">
+    <div class="card-body">
+        {% if productores %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>DNI</th>
+                        <th>Localidad</th>
+                        <th>Estado</th>
+                        <th>Registro</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for productor in productores %}
+                    <tr>
+                        <td>
+                            <strong>{{ productor.apellido }}, {{ productor.nombre }}</strong><br>
+                            <small class="text-muted">{{ productor.domicilio|truncatechars:30 }}</small>
+                        </td>
+                        <td>{{ productor.dni }}</td>
+                        <td>{{ productor.localidad }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if productor.estado == 'REGISTRADO' %}bg-success
+                                {% elif productor.estado == 'PENDIENTE' %}bg-warning
+                                {% elif productor.estado == 'RENOVACION' %}bg-primary
+                                {% elif productor.estado == 'TRANSFERENCIA' %}bg-info
+                                {% elif productor.estado == 'BAJA' %}bg-danger
+                                {% else %}bg-secondary{% endif %}">
+                                {{ productor.get_estado_display }}
+                            </span>
+                        </td>
+                        <td>{{ productor.fecha_registro|date:"d/m/Y" }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'detalle_productor' productor.id %}" class="btn btn-outline-info" 
+                                   title="Ver detalle">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'editar_productor' productor.id %}" class="btn btn-outline-primary" 
+                                   title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% if user.userprofile.es_administrador %}
+                                <a href="#" class="btn btn-outline-danger" title="Eliminar"
+                                   onclick="confirmarEliminacion({{ productor.id }}, '{{ productor.nombre_completo }}')">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación -->
+        {% if is_paginated %}
+        <nav aria-label="Paginación">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        Anterior
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            {{ num }}
+                        </a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        Siguiente
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle"></i> No se encontraron productores con los filtros aplicados.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de confirmación de eliminación -->
+<div class="modal fade" id="modalEliminar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar al productor <strong id="nombreProductor"></strong>?</p>
+                <p class="text-danger"><small>Esta acción no se puede deshacer.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formEliminar" method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarEliminacion(id, nombre) {
+    document.getElementById('nombreProductor').textContent = nombre;
+    document.getElementById('formEliminar').action = "{% url 'eliminar_productor' 0 %}".replace('0', id);
+    new bootstrap.Modal(document.getElementById('modalEliminar')).show();
+}
+</script>
+{% endblock %}

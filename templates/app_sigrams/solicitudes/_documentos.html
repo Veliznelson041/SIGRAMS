@@ -1,0 +1,170 @@
+<!-- Documentos adjuntos -->
+<div class="card mb-4">
+    <div class="card-header bg-catamarca text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">📁 Documentos Adjuntos</h5>
+        <button class="btn btn-light btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#documentosCollapse">
+            Mostrar/Ocultar
+        </button>
+    </div>
+    <div class="collapse show" id="documentosCollapse">
+        <div class="card-body">
+            
+            <!-- Formulario para subir nuevos documentos -->
+            {% if user_profile.rol in roles_permitidos_documentos or solicitud.solicitante == user %}
+            <div class="mb-4">
+                <h6>Agregar Nuevo Documento</h6>
+                <form method="post" enctype="multipart/form-data" id="formDocumentos">
+                    {% csrf_token %}
+                    <input type="hidden" name="documentos" value="true">
+                    
+                    {{ documento_formset.management_form }}
+                    
+                    <div class="row g-3" id="documentos-container">
+                        {% for form in documento_formset %}
+                        <div class="col-md-12 documento-form">
+                            <div class="card mb-2">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <label class="form-label">Tipo de Documento *</label>
+                                            {{ form.tipo_documento }}
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Nombre *</label>
+                                            {{ form.nombre }}
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Archivo *</label>
+                                            {{ form.archivo }}
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Eliminar</label>
+                                            <div class="form-check mt-2">
+                                                {{ form.DELETE }}
+                                                <label class="form-check-label" for="{{ form.DELETE.id_for_label }}">
+                                                    Eliminar
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-12 mt-2">
+                                            <label class="form-label">Observaciones</label>
+                                            {{ form.observaciones }}
+                                        </div>
+                                    </div>
+                                    {{ form.id }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="agregarDocumento()">
+                            + Agregar Otro Documento
+                        </button>
+                        <button type="submit" class="btn btn-sm btn-catamarca">
+                            💾 Guardar Documentos
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <hr>
+            {% endif %}
+            
+            <!-- Lista de documentos existentes -->
+            <h6>Documentos Existentes</h6>
+            {% if solicitud.documentos.exists %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Nombre</th>
+                            <th>Archivo</th>
+                            <th>Fecha</th>
+                            <th>Subido por</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for documento in solicitud.documentos.all %}
+                        <tr>
+                            <td>
+                                <span class="badge bg-info">
+                                    {{ documento.get_tipo_documento_display }}
+                                </span>
+                            </td>
+                            <td>{{ documento.nombre }}</td>
+                            <td>
+                                <a href="{{ documento.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    {% if documento.es_imagen %}
+                                    🖼️ Ver
+                                    {% else %}
+                                    📄 Descargar
+                                    {% endif %}
+                                </a>
+                                <small class="text-muted d-block">
+                                    {{ documento.archivo.size|filesizeformat }}
+                                </small>
+                            </td>
+                            <td>{{ documento.fecha_subida|date:"d/m/Y H:i" }}</td>
+                            <td>{{ documento.usuario_subida.username|default:"-" }}</td>
+                            <td>
+                                {% if documento.usuario_subida == user or user_profile.rol in roles_permitidos_documentos %}
+                                <form method="post" action="{% url 'eliminar_documento' documento.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                            onclick="return confirm('¿Eliminar este documento?')">
+                                        🗑️
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                No hay documentos adjuntos aún.
+            </div>
+            {% endif %}
+            
+        </div>
+    </div>
+</div>
+
+<script>
+// Contador para formularios de documentos
+let documentoCount = {{ documento_formset.total_form_count }};
+
+function agregarDocumento() {
+    const container = document.getElementById('documentos-container');
+    const template = document.querySelector('.documento-form').cloneNode(true);
+    
+    // Limpiar y actualizar IDs
+    const forms = template.querySelectorAll('input, select, textarea');
+    forms.forEach(element => {
+        if (element.name) {
+            element.name = element.name.replace('-0-', `-${documentoCount}-`);
+            element.id = element.id.replace('-0-', `-${documentoCount}-`);
+        }
+        // Limpiar valores
+        if (element.tagName === 'INPUT' && element.type !== 'hidden' && element.type !== 'checkbox') {
+            element.value = '';
+        } else if (element.tagName === 'SELECT') {
+            element.selectedIndex = 0;
+        } else if (element.tagName === 'TEXTAREA') {
+            element.value = '';
+        }
+    });
+    
+    // Agregar al contenedor
+    container.appendChild(template);
+    
+    // Actualizar contador del management form
+    const totalForms = document.getElementById('id_documentosolicitud_set-TOTAL_FORMS');
+    totalForms.value = ++documentoCount;
+}
+</script>

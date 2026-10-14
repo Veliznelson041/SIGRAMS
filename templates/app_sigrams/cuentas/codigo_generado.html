@@ -1,0 +1,66 @@
+{% extends 'app_sigrams/base.html' %}
+
+{% block title %}Cuenta Aprobada - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card shadow border-success">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">✅ Cuenta aprobada correctamente</h4>
+            </div>
+            <div class="card-body p-4">
+                <table class="table table-borderless">
+                    <tr>
+                        <th>Usuario:</th>
+                        <td>{{ usuario.username }}</td>
+                    </tr>
+                    <tr>
+                        <th>Nombre completo:</th>
+                        <td>{{ usuario.get_full_name }}</td>
+                    </tr>
+                    <tr>
+                        <th>Rol asignado:</th>
+                        <td>{{ rol_display }}</td>
+                    </tr>
+                    <tr>
+                        <th>Email:</th>
+                        <td>{{ usuario.email|default:"No especificado" }}</td>
+                    </tr>
+                </table>
+
+                <div class="alert alert-info text-center">
+                    <div class="mb-1">Código de activación:</div>
+                    <div class="h2 fw-bold" style="letter-spacing: 4px;" id="codigo-texto">{{ codigo }}</div>
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="copiarCodigo()">
+                        📋 Copiar código
+                    </button>
+                </div>
+
+                {% if email_enviado %}
+                <div class="alert alert-success">
+                    ✅ El código también fue enviado automáticamente al email <strong>{{ usuario.email }}</strong>.
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    ⚠️ No se pudo enviar el email automáticamente. Compartíle el código a la persona por otro medio.
+                </div>
+                {% endif %}
+
+                <a href="{% url 'cuentas_pendientes' %}" class="btn btn-catamarca w-100 mt-2">
+                    Volver a Cuentas Pendientes
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copiarCodigo() {
+    const texto = document.getElementById('codigo-texto').textContent.trim();
+    navigator.clipboard.writeText(texto).then(function() {
+        alert('Código copiado al portapapeles.');
+    });
+}
+</script>
+{% endblock %}

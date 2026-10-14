@@ -1,0 +1,214 @@
+{% extends 'app_sigrams/base.html' %}
+{% block title %}Dashboard Administrativo - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-catamarca mb-0">📊 Dashboard Administrativo</h2>
+    <div class="d-flex gap-2">
+        <a href="{% url 'reporte_usuarios_pdf' %}" class="btn btn-outline-danger btn-sm">
+            📄 PDF Usuarios
+        </a>
+        <a href="{% url 'reporte_usuarios_excel' %}" class="btn btn-outline-success btn-sm">
+            📊 Excel Usuarios
+        </a>
+    </div>
+</div>
+
+<!-- Tarjetas de resumen -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-white h-100" style="background:#0A2E5A;">
+            <div class="card-body">
+                <h6 class="card-title">Usuarios</h6>
+                <p class="card-text h3 mb-1">{{ total_usuarios }}</p>
+                <small>Admin: {{ admins }} | Empleados: {{ empleados }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white h-100 bg-success">
+            <div class="card-body">
+                <h6 class="card-title">Solicitudes</h6>
+                <p class="card-text h3 mb-1">{{ total_solicitudes }}</p>
+                <small>
+                    Pendientes: {{ solicitudes_pendientes }}
+                    | En revisión: {{ solicitudes_en_revision }}
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white h-100 bg-info">
+            <div class="card-body">
+                <h6 class="card-title">Productores</h6>
+                <p class="card-text h3 mb-1">{{ total_productores }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white h-100 bg-warning">
+            <div class="card-body">
+                <h6 class="card-title">Marcas</h6>
+                <p class="card-text h3 mb-1">{{ total_marcas }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Últimas solicitudes -->
+<div class="card shadow mb-4">
+    <div class="card-header bg-catamarca text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Últimas solicitudes</h5>
+        <small class="text-white-50" id="info-sol"></small>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">ID</th>
+                        <th>Productor</th>
+                        <th>Tipo</th>
+                        <th>Estado</th>
+                        <th>Solicitante</th>
+                        <th>Fecha</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-sol">
+                    {% for s in ultimas_solicitudes %}
+                    <tr class="fila-sol">
+                        <td class="ps-3">#{{ s.id }}</td>
+                        <td>{{ s.productor.nombre_completo|truncatechars:25 }}</td>
+                        <td>
+                            <span class="badge bg-info text-dark" style="font-size:0.75rem;">
+                                {{ s.get_tipo_tramite_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge
+                                {% if s.estado == 'APROBADO' %}bg-success
+                                {% elif s.estado == 'RECHAZADO' %}bg-danger
+                                {% elif s.estado == 'EN_REVISION' %}bg-primary
+                                {% elif s.estado == 'PENDIENTE' %}bg-warning text-dark
+                                {% else %}bg-secondary{% endif %}"
+                                style="font-size:0.75rem;">
+                                {{ s.get_estado_display }}
+                            </span>
+                        </td>
+                        <td>{{ s.solicitante.username|default:"-" }}</td>
+                        <td class="text-muted small">{{ s.fecha_solicitud|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center py-2">
+        <span id="info-sol" class="text-muted small"></span>
+        <nav><ul class="pagination pagination-sm mb-0" id="pag-sol"></ul></nav>
+    </div>
+</div>
+
+<!-- Logs recientes -->
+<div class="card shadow mb-4">
+    <div class="card-header bg-catamarca text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Logs recientes</h5>
+        <small class="text-white-50" id="info-log-header"></small>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Usuario</th>
+                        <th>Modelo</th>
+                        <th>Acción</th>
+                        <th>Fecha</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-log">
+                    {% for log in logs_recientes %}
+                    <tr class="fila-log">
+                        <td class="ps-3">{{ log.user.username|default:"Sistema" }}</td>
+                        <td>{{ log.modelo }}</td>
+                        <td>{{ log.accion }}</td>
+                        <td class="text-muted small">{{ log.timestamp|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center py-2">
+        <span id="info-log" class="text-muted small"></span>
+        <nav><ul class="pagination pagination-sm mb-0" id="pag-log"></ul></nav>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function paginar(claseFilas, idInfo, idPag, porPagina) {
+    var filas = Array.from(document.querySelectorAll('.' + claseFilas));
+    var total = filas.length;
+    var pagActual = 1;
+    var totalPags = Math.ceil(total / porPagina);
+
+    function mostrar(p) {
+        pagActual = p;
+        filas.forEach(function(f, i) {
+            f.style.display = (i >= (p-1)*porPagina && i < p*porPagina) ? '' : 'none';
+        });
+        var desde = (p-1)*porPagina + 1;
+        var hasta = Math.min(p*porPagina, total);
+        var info = document.getElementById(idInfo);
+        if (info) info.textContent = 'Mostrando ' + desde + '–' + hasta + ' de ' + total;
+
+        var ul = document.getElementById(idPag);
+        if (!ul) return;
+        ul.innerHTML = '';
+
+        // Anterior
+        var liPrev = document.createElement('li');
+        liPrev.className = 'page-item' + (p === 1 ? ' disabled' : '');
+        liPrev.innerHTML = '<button class="page-link" type="button">‹</button>';
+        liPrev.querySelector('button').addEventListener('click', function() {
+            if (pagActual > 1) mostrar(pagActual - 1);
+        });
+        ul.appendChild(liPrev);
+
+        // Números
+        var desde2 = Math.max(1, p - 2);
+        var hasta2 = Math.min(totalPags, desde2 + 4);
+        for (var i = desde2; i <= hasta2; i++) {
+            var li = document.createElement('li');
+            li.className = 'page-item' + (i === p ? ' active' : '');
+            li.innerHTML = '<button class="page-link" type="button">' + i + '</button>';
+            (function(num) {
+                li.querySelector('button').addEventListener('click', function() {
+                    mostrar(num);
+                });
+            })(i);
+            ul.appendChild(li);
+        }
+
+        // Siguiente
+        var liNext = document.createElement('li');
+        liNext.className = 'page-item' + (p === totalPags ? ' disabled' : '');
+        liNext.innerHTML = '<button class="page-link" type="button">›</button>';
+        liNext.querySelector('button').addEventListener('click', function() {
+            if (pagActual < totalPags) mostrar(pagActual + 1);
+        });
+        ul.appendChild(liNext);
+    }
+
+    if (total > 0) mostrar(1);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    paginar('fila-sol', 'info-sol', 'pag-sol', 10);
+    paginar('fila-log', 'info-log', 'pag-log', 15);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends 'app_sigrams/base.html' %}
+
+{% block title %}Historial de Eliminaciones - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-catamarca">🗑️ Historial de Eliminaciones</h1>
+    <a href="{% url 'home' %}" class="btn btn-outline-secondary">← Volver al Dashboard</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if eliminaciones %}
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Eliminado por</th>
+                        <th>Productor</th>
+                        <th>DNI</th>
+                        <th>Resumen</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in eliminaciones %}
+                    <tr>
+                        <td>{{ e.timestamp|date:"d/m/Y H:i" }}</td>
+                        <td>{{ e.user.username|default:"—" }}</td>
+                        <td><strong>{{ e.snapshot.nombre }}</strong></td>
+                        <td>{{ e.snapshot.dni }}</td>
+                        <td>
+                            <small class="text-muted">
+                                {{ e.snapshot.marcas|length }} marca(s),
+                                {{ e.snapshot.campos|length }} campo(s),
+                                {{ e.snapshot.solicitudes|length }} solicitud(es)
+                            </small>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#detalle-{{ forloop.counter }}">
+                                Ver detalle
+                            </button>
+                        </td>
+                    </tr>
+                    <tr class="collapse" id="detalle-{{ forloop.counter }}">
+                        <td colspan="6" class="bg-light">
+                            <div class="row small p-2">
+                                <div class="col-md-4">
+                                    <strong>Datos del productor</strong>
+                                    <ul class="mb-2">
+                                        <li>CUIT: {{ e.snapshot.cuit|default:"—" }}</li>
+                                        <li>Localidad: {{ e.snapshot.localidad|default:"—" }}</li>
+                                        <li>Departamento: {{ e.snapshot.departamento|default:"—" }}</li>
+                                        <li>Estado: {{ e.snapshot.estado|default:"—" }}</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Marcas y señales</strong>
+                                    {% if e.snapshot.marcas %}
+                                    <ul class="mb-2">
+                                        {% for m in e.snapshot.marcas %}
+                                        <li>#{{ m.numero_orden }} — {{ m.estado }}<br>
+                                            <span class="text-muted">{{ m.descripcion_marca }}</span></li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}<p class="text-muted mb-2">Sin marcas registradas.</p>{% endif %}
+                                    <strong>Campos</strong>
+                                    {% if e.snapshot.campos %}
+                                    <ul class="mb-0">
+                                        {% for cp in e.snapshot.campos %}
+                                        <li>{{ cp.nombre }}{% if cp.area_hectareas %} ({{ cp.area_hectareas }} ha){% endif %}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}<p class="text-muted mb-0">Sin campos registrados.</p>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Solicitudes</strong>
+                                    {% if e.snapshot.solicitudes %}
+                                    <ul class="mb-0">
+                                        {% for s in e.snapshot.solicitudes %}
+                                        <li>#{{ s.id }} — {{ s.tipo_tramite }} ({{ s.estado }}, {{ s.fecha }})</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}<p class="text-muted mb-0">Sin solicitudes registradas.</p>{% endif %}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center mb-0">Todavía no se eliminó ningún productor.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

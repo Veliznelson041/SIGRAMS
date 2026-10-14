@@ -1,0 +1,131 @@
+{% extends 'app_sigrams/base.html' %}
+{% block title %}Reporte de Ingresos - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-catamarca">Reporte de Ingresos por Sellados</h1>
+    <div class="btn-toolbar">
+        <a href="?export=pdf" class="btn btn-outline-danger me-2">📄 PDF</a>
+        <a href="?export=excel" class="btn btn-outline-success">📊 Excel</a>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Año</label>
+                <select name="año" class="form-control">
+                    <option value="">Todos</option>
+                    {% for año in años_disponibles %}
+                    <option value="{{ año.year }}" {% if año.year == año_seleccionado|add:"0" %}selected{% endif %}>{{ año.year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Mes</label>
+                <select name="mes" class="form-control">
+                    <option value="">Todos</option>
+                    {% for i in "123456789012" %}
+                    <option value="{{ forloop.counter }}" {% if forloop.counter == mes_seleccionado|add:"0" %}selected{% endif %}>
+                        {{ forloop.counter|stringformat:"02d" }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-catamarca">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Resumen -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5 class="card-title">Total Ingresos</h5>
+                <p class="card-text h2">${{ total_general|floatformat:2 }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h5 class="card-title">Cantidad de Sellados</h5>
+                <p class="card-text h2">{{ cantidad_total }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla por mes -->
+<div class="card mb-4">
+    <div class="card-header bg-catamarca text-white">
+        <h5 class="mb-0">Ingresos por Mes</h5>
+    </div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Mes</th>
+                    <th>Cantidad</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in ingresos_por_mes %}
+                <tr>
+                    <td>{{ item.mes|date:"F Y" }}</td>
+                    <td>{{ item.cantidad }}</td>
+                    <td>${{ item.total|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-center">No hay datos</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Detalle -->
+<div class="card">
+    <div class="card-header bg-catamarca text-white">
+        <h5 class="mb-0">Detalle de Ingresos (últimos 100)</h5>
+    </div>
+    <div class="card-body">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>N° Orden</th>
+                    <th>Productor</th>
+                    <th>Tipo</th>
+                    <th>Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in ingresos_detalle %}
+                <tr>
+                    <td>{{ m.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                    <td>{{ m.numero_orden }}</td>
+                    <td>{{ m.productor.nombre_completo|truncatechars:25 }}</td>
+                    <td>{{ m.get_tipo_tramite_display }}</td>
+                    <td>${{ m.valor_sellado|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center">No hay ingresos</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.table tbody tr:hover {
+    background-color: rgba(10, 46, 90, 0.05);
+}
+</style>
+{% endblock %}

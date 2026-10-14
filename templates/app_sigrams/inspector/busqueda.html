@@ -1,0 +1,67 @@
+{% extends 'app_sigrams/base_inspector.html' %}
+
+{% block title %}Búsqueda de Marcas y Señales - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-catamarca">🔍 Búsqueda de Marcas y Señales</h1>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-10">
+                <input type="text" name="q" class="form-control" value="{{ q }}"
+                       placeholder="Buscar por DNI, nombre del productor, descripción de marca o señal...">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-catamarca w-100">Buscar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if q %}
+<div class="card">
+    <div class="card-body">
+        {% if resultados %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Productor</th>
+                        <th>DNI</th>
+                        <th>Descripción de Marca</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in resultados %}
+                    <tr>
+                        <td>{{ m.productor.nombre_completo }}</td>
+                        <td>{{ m.productor.dni }}</td>
+                        <td>{{ m.descripcion_marca|truncatechars:60 }}</td>
+                        <td>
+                            <span class="badge {% if m.productor.estado == 'REGISTRADO' %}bg-success
+                                            {% elif m.productor.estado == 'BAJA' %}bg-danger
+                                            {% elif m.productor.estado == 'PENDIENTE' %}bg-warning
+                                            {% else %}bg-secondary{% endif %}">
+                                {{ m.productor.get_estado_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'detalle_inspector' m.pk %}" class="btn btn-sm btn-outline-primary">Ver detalle</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center mb-0">No se encontraron resultados para "{{ q }}".</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

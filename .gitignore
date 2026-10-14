@@ -1,0 +1,39 @@
+# Entornos virtuales
+venv/
+venv_test/
+.venv/
+
+# Secretos (el .env real NUNCA se sube; el .env.example sí)
+.env
+
+# Bases de datos y volcados
+db.sqlite3
+*.sqlite3
+*.db
+*.sql
+*.dump
+
+# Archivos subidos y estáticos generados
+media/
+staticfiles/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+
+# Logs y temporales
+*.log
+*.pot
+
+# Editor y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Compilación
+build/
+dist/

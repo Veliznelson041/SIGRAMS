@@ -1,0 +1,33 @@
+{% extends 'app_sigrams/base.html' %}
+
+{% block title %}Activar Cuenta - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow border-catamarca">
+            <div class="card-header bg-catamarca text-white text-center">
+                <h4 class="mb-0">🔑 Activar Cuenta</h4>
+            </div>
+            <div class="card-body p-4">
+                <p class="text-muted small">Ingresá tu usuario y el código de activación que te dio el administrador.</p>
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Usuario</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="codigo" class="form-label">Código de activación</label>
+                        <input type="text" class="form-control text-uppercase" id="codigo" name="codigo" required maxlength="8">
+                    </div>
+                    <button type="submit" class="btn btn-catamarca w-100 py-2">Activar cuenta</button>
+                </form>
+                <div class="text-center mt-3">
+                    <a href="{% url 'login' %}" class="text-muted small">Volver al login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

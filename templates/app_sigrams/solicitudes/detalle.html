@@ -1,0 +1,356 @@
+{% extends 'app_sigrams/base.html' %}
+
+{% block title %}Solicitud #{{ solicitud.id }} - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-catamarca">Solicitud #{{ solicitud.id }}</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'lista_solicitudes' %}" class="btn btn-outline-secondary me-2">
+            ← Volver a la lista
+        </a>
+        
+        {% if solicitud.solicitante == user %}
+        <a href="{% url 'editar_solicitud' solicitud.pk %}" class="btn btn-outline-primary me-2">
+            ✏️ Editar
+        </a>
+        {% endif %}
+        
+        {% if user_profile.rol in roles_permitidos_documentos %}
+        <div class="btn-group">
+            <button type="button" class="btn btn-info dropdown-toggle" data-bs-toggle="dropdown">
+                📋 Acciones
+            </button>
+            <ul class="dropdown-menu">
+                {% if solicitud.estado == 'PENDIENTE' %}
+                <li>
+                    <a class="dropdown-item confirmar-accion" href="{% url 'cambiar_estado_solicitud' solicitud.pk 'revisar' %}" 
+                       data-mensaje="¿Está seguro de poner en revisión esta solicitud?">
+                        🔍 Poner en revisión
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                {% endif %}
+                
+                {% if user_profile.rol in roles_permitidos_documentos %}
+                {% if solicitud.estado == 'EN_REVISION' or solicitud.estado == 'OBSERVADO' %}
+                <li>
+                    <a class="dropdown-item confirmar-accion" href="{% url 'cambiar_estado_solicitud' solicitud.pk 'aprobar' %}" 
+                       data-mensaje="¿Está seguro de aprobar esta solicitud?" data-icono="success">
+                        ✅ Aprobar
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item text-danger confirmar-accion" href="{% url 'cambiar_estado_solicitud' solicitud.pk 'rechazar' %}" 
+                       data-mensaje="¿Está seguro de rechazar esta solicitud?" data-icono="warning">
+                        ❌ Rechazar
+                    </a>
+                </li>
+                {% endif %}
+                {% endif %}
+                
+                {% if solicitud.estado == 'EN_REVISION' %}
+                <li>
+                    <a class="dropdown-item text-warning confirmar-accion" href="{% url 'cambiar_estado_solicitud' solicitud.pk 'observar' %}" 
+                       data-mensaje="¿Está seguro de marcar como observada esta solicitud?" data-icono="warning">
+                        ⚠️ Marcar como observada
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% if solicitud.estado in estados_para_devolver %}
+                <li>
+                    <a class="dropdown-item confirmar-accion" href="{% url 'cambiar_estado_solicitud' solicitud.pk 'pendiente' %}" 
+                       data-mensaje="¿Está seguro de devolver a pendiente esta solicitud?">
+                        ↩️ Devolver a pendiente
+                    </a>
+                </li>
+                {% endif %}
+                
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'revision_solicitud' solicitud.pk %}">
+                        📝 Realizar revisión detallada
+                    </a>
+                </li>
+                {% if solicitud.estado == 'APROBADO' and solicitud.marca_senal %}
+                <li>
+                    <a class="dropdown-item text-success" href="{% url 'generar_carnet' solicitud.marca_senal.pk %}" target="_blank">
+                        🪪 {% if solicitud.marca_senal.carnet_generado %}Volver a generar Carnet{% else %}Generar Carnet{% endif %}
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Resumen -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="card-title">Estado</h6>
+                <span class="badge {% if solicitud.estado == 'APROBADO' %}bg-success
+                                {% elif solicitud.estado == 'RECHAZADO' %}bg-danger
+                                {% elif solicitud.estado == 'EN_REVISION' %}bg-info
+                                {% elif solicitud.estado == 'OBSERVADO' %}bg-warning
+                                {% else %}bg-secondary{% endif %} fs-6">
+                    {{ solicitud.get_estado_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="card-title">Prioridad</h6>
+                <span class="badge {% if solicitud.prioridad == 'URGENTE' %}bg-danger
+                                {% elif solicitud.prioridad == 'ALTA' %}bg-warning
+                                {% elif solicitud.prioridad == 'MEDIA' %}bg-primary
+                                {% else %}bg-secondary{% endif %} fs-6">
+                    {{ solicitud.get_prioridad_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="card-title">Días pendientes</h6>
+                <p class="card-text h4 {% if solicitud.dias_pendientes > 7 %}text-danger{% elif solicitud.dias_pendientes > 3 %}text-warning{% endif %}">
+                    {{ solicitud.dias_pendientes }}
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card {% if solicitud.esta_vencida %}bg-danger text-white{% endif %}">
+            <div class="card-body text-center">
+                <h6 class="card-title">{% if solicitud.esta_vencida %}VENCIDA{% else %}Vence en{% endif %}</h6>
+                <p class="card-text h4">
+                    {% if solicitud.fecha_vencimiento %}
+                        {{ solicitud.fecha_vencimiento|date:"d/m/Y" }}
+                        {% if solicitud.esta_vencida %}(Vencida){% endif %}
+                    {% else %}
+                        Sin fecha
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <!-- Información básica -->
+        <div class="card mb-4">
+            <div class="card-header bg-catamarca text-white">
+                <h5 class="mb-0">Información Básica</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th>Tipo de Trámite:</th>
+                        <td>{{ solicitud.get_tipo_tramite_display }}</td>
+                    </tr>
+                    <tr>
+                        <th>Productor:</th>
+                        <td>
+                            <a href="{% url 'detalle_productor' solicitud.productor.pk %}">
+                                {{ solicitud.productor.nombre_completo }}
+                            </a>
+                        </td>
+                    </tr>
+                    {% if solicitud.marca_senal %}
+                    <tr>
+                        <th>Marca/Señal:</th>
+                        <td>
+                            <a href="{% url 'detalle_marca' solicitud.marca_senal.pk %}">
+                                Marca #{{ solicitud.marca_senal.numero_orden }}
+                            </a>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <th>Fecha de Solicitud:</th>
+                        <td>{{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% if solicitud.fecha_revision %}
+                    <tr>
+                        <th>Fecha de Revisión:</th>
+                        <td>{{ solicitud.fecha_revision|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if solicitud.fecha_resolucion %}
+                    <tr>
+                        <th>Fecha de Resolución:</th>
+                        <td>{{ solicitud.fecha_resolucion|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+
+        <!-- Documentación adjunta -->
+        <div class="card mb-4">
+            <div class="card-header bg-catamarca text-white">
+                <h5 class="mb-0">Documentación Adjunta</h5>
+            </div>
+            <div class="card-body">
+                        {% include 'app_sigrams/solicitudes/_documentos.html' %}
+
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <!-- Motivo y observaciones -->
+        <div class="card mb-4">
+            <div class="card-header bg-catamarca text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Motivo de la Solicitud</h5>
+            </div>
+            <div class="card-body">
+                <p>{{ solicitud.motivo|linebreaks }}</p>
+            </div>
+        </div>
+
+        {% if solicitud.observaciones %}
+        <div class="card mb-4">
+            <div class="card-header bg-catamarca text-white">
+                <h5 class="mb-0">Observaciones</h5>
+            </div>
+            <div class="card-body">
+                <p>{{ solicitud.observaciones|linebreaks }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if solicitud.observaciones_internas and user_profile.rol in roles_permitidos_documentos %}
+        <div class="card mb-4">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">Observaciones Internas</h5>
+            </div>
+            <div class="card-body">
+                <p>{{ solicitud.observaciones_internas|linebreaks }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Historial de Cambios -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">🕐 Historial de esta Solicitud</h5>
+            </div>
+            <div class="card-body">
+                {% if historial %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Acción</th>
+                                <th>Usuario</th>
+                                <th>Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in historial %}
+                            <tr>
+                                <td>{{ item.timestamp|date:"d/m/Y H:i" }}</td>
+                                <td>{{ item.accion }}</td>
+                                <td>{{ item.user.username|default:"Sistema" }}</td>
+                                <td><small class="text-muted">{{ item.snapshot.estado|default:"" }}</small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center mb-0">No hay cambios registrados todavía.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Responsables -->
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-catamarca text-white">
+                <h5 class="mb-0">Solicitante</h5>
+            </div>
+            <div class="card-body text-center">
+                <p class="h5">{{ solicitud.solicitante.get_full_name|default:solicitud.solicitante.username }}</p>
+                <p class="text-muted">{{ solicitud.solicitante.email }}</p>
+            </div>
+        </div>
+    </div>
+    
+    {% if solicitud.revisor %}
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Revisor</h5>
+            </div>
+            <div class="card-body text-center">
+                <p class="h5">{{ solicitud.revisor.get_full_name|default:solicitud.revisor.username }}</p>
+                <p class="text-muted">{{ solicitud.revisor.email }}</p>
+                {% if solicitud.fecha_revision %}
+                <small>Revisado: {{ solicitud.fecha_revision|date:"d/m/Y H:i" }}</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if solicitud.aprobador %}
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Aprobador</h5>
+            </div>
+            <div class="card-body text-center">
+                <p class="h5">{{ solicitud.aprobador.get_full_name|default:solicitud.aprobador.username }}</p>
+                <p class="text-muted">{{ solicitud.aprobador.email }}</p>
+                {% if solicitud.fecha_resolucion %}
+                <small>Resuelto: {{ solicitud.fecha_resolucion|date:"d/m/Y H:i" }}</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.querySelectorAll('.confirmar-accion').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const url = this.getAttribute('href');
+        const mensaje = this.getAttribute('data-mensaje') || '¿Está seguro?';
+        const icono = this.getAttribute('data-icono') || 'question';
+
+        Swal.fire({
+            title: 'Confirmar acción',
+            text: mensaje,
+            icon: icono,
+            showCancelButton: true,
+            confirmButtonText: 'Sí, continuar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#0A2E5A',
+            cancelButtonColor: '#6c757d'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                window.location.href = url;
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

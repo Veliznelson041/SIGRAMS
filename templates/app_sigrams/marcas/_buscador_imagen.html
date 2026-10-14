@@ -1,0 +1,56 @@
+{# ─── VERIFICACIÓN EN TIEMPO REAL al seleccionar imagen_marca ─── #}
+<div id="panel-verificacion-imagen" class="mt-1 d-none">
+  <div id="alerta-duplicado" class="alert alert-warning alert-dismissible d-none" role="alert">
+    <strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Imagen duplicada</strong>
+    <p id="mensaje-duplicado" class="mb-0 mt-1 small"></p>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div id="alerta-ok" class="alert alert-success d-none" role="alert">
+    <i class="bi bi-check-circle-fill me-1"></i> Imagen verificada — no hay duplicados.
+  </div>
+  <div id="spinner-verificacion" class="d-none text-muted small">
+    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+    Verificando imagen...
+  </div>
+</div>
+
+<script>
+(function () {
+  const URL_VERIFICAR = "{% url 'ajax_verificar_imagen' %}";
+  const CSRF = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+  const excluirId = "{{ object.pk|default:'' }}";
+  const campoImagen = document.getElementById("id_imagen_marca");
+
+  if (!campoImagen) return;
+
+  campoImagen.addEventListener("change", function () {
+    const archivo = this.files[0];
+    if (!archivo) return;
+    const panel = document.getElementById("panel-verificacion-imagen");
+    panel.classList.remove("d-none");
+    document.getElementById("spinner-verificacion").classList.remove("d-none");
+    document.getElementById("alerta-duplicado").classList.add("d-none");
+    document.getElementById("alerta-ok").classList.add("d-none");
+
+    const fd = new FormData();
+    fd.append("imagen", archivo);
+    if (excluirId) fd.append("excluir_id", excluirId);
+
+    fetch(URL_VERIFICAR, { method: "POST", headers: { "X-CSRFToken": CSRF }, body: fd })
+      .then(r => r.json()).then(data => {
+        document.getElementById("spinner-verificacion").classList.add("d-none");
+        if (!data.ok) return;
+        if (data.es_duplicada) {
+          document.getElementById("mensaje-duplicado").textContent = data.mensaje;
+          document.getElementById("alerta-duplicado").classList.remove("d-none");
+          document.getElementById("alerta-ok").classList.add("d-none");
+        } else {
+          document.getElementById("alerta-duplicado").classList.add("d-none");
+          document.getElementById("alerta-ok").classList.remove("d-none");
+        }
+      }).catch(() => {
+        document.getElementById("spinner-verificacion").classList.add("d-none");
+      });
+  });
+})();
+</script>

@@ -1,0 +1,451 @@
+{% extends 'app_sigrams/base.html' %}
+{% load l10n %}
+
+{% block title %}Detalle de Productor - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-catamarca">Detalle del Productor</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'lista_productores' %}" class="btn btn-outline-secondary me-2">
+            ← Volver a la lista
+        </a>
+        <a href="{% url 'editar_productor' productor.pk %}" class="btn btn-catamarca me-2">
+            ✏️ Editar
+        </a>
+        <a href="{% url 'nueva_marca' %}?productor={{ productor.pk }}" class="btn btn-catamarca">
+            🏷️ Nueva Marca
+        </a>
+    </div>
+</div>
+
+<!-- Mensajes -->
+{% if messages %}
+<div class="mb-4">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-catamarca text-white">
+                <h5 class="mb-0">Datos Personales</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th>Nombre:</th>
+                        <td>{{ productor.nombre_completo }}</td>
+                    </tr>
+                    <tr>
+                        <th>DNI:</th>
+                        <td>{{ productor.dni }}</td>
+                    </tr>
+                    <tr>
+                        <th>CUIT:</th>
+                        <td>{{ productor.cuit|default:"No especificado" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Teléfono:</th>
+                        <td>{{ productor.telefono|default:"No especificado" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Email:</th>
+                        <td>{{ productor.email|default:"No especificado" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Estado:</th>
+                        <td>
+                            <span class="badge {% if productor.estado == 'REGISTRADO' %}bg-success
+                                            {% elif productor.estado == 'PENDIENTE' %}bg-warning
+                                            {% elif productor.estado == 'RENOVACION' %}bg-primary
+                                            {% elif productor.estado == 'TRANSFERENCIA' %}bg-info
+                                            {% elif productor.estado == 'BAJA' %}bg-danger
+                                            {% else %}bg-secondary{% endif %}">
+                                {{ productor.get_estado_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Fecha de Registro:</th>
+                        <td>{{ productor.fecha_registro|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-catamarca text-white">
+                <h5 class="mb-0">Ubicación</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th>Calle:</th>
+                        <td>{{ productor.calle|default:"No especificado" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Localidad:</th>
+                        <td>{{ productor.localidad|default:"No especificado" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Municipio:</th>
+                        <td>{{ productor.municipio|default:"No especificado" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Departamento:</th>
+                        <td>{{ productor.departamento|default:"No especificado" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Provincia:</th>
+                        <td>{{ productor.provincia|default:"No especificado" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-catamarca text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Observaciones</h5>
+            </div>
+            <div class="card-body">
+                <p>{{ productor.observaciones|default:"No hay observaciones."|linebreaks }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mapa de ubicación -->
+{% if productor.latitud and productor.longitud %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-catamarca text-white">
+                <h5 class="mb-0">🗺️ Ubicación en el Mapa</h5>
+            </div>
+            <div class="card-body">
+                <div id="map" style="height: 400px; border-radius: 8px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const map = L.map('map').setView([{{ productor.latitud|unlocalize }}, {{ productor.longitud|unlocalize }}], 14);
+    
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri'
+    }).addTo(map);
+    
+    L.marker([{{ productor.latitud|unlocalize }}, {{ productor.longitud|unlocalize }}])
+        .addTo(map)
+        .bindPopup(`
+            <b>{{ productor.nombre_completo }}</b><br>
+            {{ productor.calle|default:"" }}<br>
+            {{ productor.localidad|default:"" }}
+        `)
+        .openPopup();
+    
+    {% if productor.area_hectareas %}
+    const radius = Math.sqrt({{ productor.area_hectareas }} * 10000) / Math.PI;
+    L.circle([{{ productor.latitud|unlocalize }}, {{ productor.longitud|unlocalize }}], {
+        color: 'red',
+        fillColor: '#f03',
+        fillOpacity: 0.2,
+        radius: radius
+    }).addTo(map);
+    {% endif %}
+});
+</script>
+{% endif %}
+
+<!-- Sección de Campos (con polígonos) -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-catamarca text-white">
+                <h5 class="mb-0">🗺️ Campos Registrados</h5>
+            </div>
+            <div class="card-body">
+                {% if marcas and not campos %}
+                    <div class="alert alert-info">
+                        Este productor no tiene campos propios registrados, pero tiene marcas activas asociadas a campos de otros productores (por transferencia). Revisá el detalle de cada marca para ver la ubicación de su campo.
+                    </div>
+                {% endif %}
+                {% if campos %}
+                    <ul class="list-group mb-3" id="lista-campos-productor">
+                        {% for c in campos %}
+                        <li class="list-group-item {% if c.poligono %}list-group-item-action{% endif %} d-flex justify-content-between align-items-center"
+                            {% if c.poligono %}style="cursor:pointer;" data-campo-id="{{ c.id }}"{% endif %}>
+                            <span>{{ c.nombre }}</span>
+                            {% if not c.poligono %}<span class="text-muted small">(sin polígono dibujado)</span>{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <div id="map-campos-productor" style="height:400px;border-radius:8px;border:2px solid #0A2E5A;"></div>
+                {% else %}
+                    <p class="text-muted text-center">Este productor todavía no tiene campos registrados.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sección de Marcas y Señales -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-catamarca text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Marcas y Señales Registradas</h5>
+                <a href="{% url 'nueva_marca' %}?productor={{ productor.pk }}" class="btn btn-light btn-sm">
+                    🏷️ Nueva Marca
+                </a>
+            </div>
+            <div class="card-body">
+                {% if marcas_transferidas %}
+                <div class="alert alert-warning">
+                    <strong>Marcas transferidas a otro productor:</strong>
+                    <ul class="mb-0 mt-2">
+                        {% for t in marcas_transferidas %}
+                        <li>
+                            Marca #{{ t.objeto_id }} transferida a
+                            <a href="{% url 'detalle_productor' t.snapshot.nuevo.productor_id %}">{{ t.snapshot.nuevo.productor }}</a>
+                            el {{ t.timestamp|date:"d/m/Y H:i" }}
+                            (Solicitud #{{ t.snapshot.solicitud_id }})
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                {% if marcas %}
+                <div class="alert alert-secondary py-2 small">
+                    Nota: si este productor transfirió alguna marca, el campo asociado a esa marca puede seguir figurando bajo el productor original hasta que se decida si también se transfiere la tierra.
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Número de Orden</th>
+                                <th>Tipo de Trámite</th>
+                                <th>Estado</th>
+                                <th>Fecha de Inscripción</th>
+                                <th>Total Ganado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for marca in marcas %}
+                            <tr>
+                                <td>{{ marca.numero_orden }}</td>
+                                <td>{{ marca.get_tipo_tramite_display }}</td>
+                                <td>
+                                    <span class="badge {% if marca.estado == 'VIGENTE' %}bg-success
+                                                    {% elif marca.estado == 'VENCIDA' %}bg-warning
+                                                    {% elif marca.estado == 'BAJA' %}bg-danger
+                                                    {% else %}bg-secondary{% endif %}">
+                                        {{ marca.get_estado_display }}
+                                    </span>
+                                </td>
+                                <td>{{ marca.fecha_inscripcion|date:"d/m/Y" }}</td>
+                                <td>{{ marca.total_ganado }}</td>
+                                <td>
+                                    <a href="{% url 'detalle_marca' marca.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
+                                    <a href="{% url 'editar_marca' marca.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                                    <a href="{% url 'generar_carnet' marca.pk %}" target="_blank" class="btn btn-sm btn-outline-success">
+                                        🪪 {% if marca.carnet_generado %}Ver Carnet{% else %}Generar Carnet{% endif %}
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center">No hay marcas registradas para este productor.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sección de Solicitudes -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-catamarca text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Solicitudes</h5>
+                <a href="{% url 'nueva_solicitud' %}?productor={{ productor.pk }}" class="btn btn-light btn-sm">
+                    📋 Nueva Solicitud
+                </a>
+            </div>
+            <div class="card-body">
+                {% if solicitudes %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Tipo de Trámite</th>
+                                <th>Estado</th>
+                                <th>Fecha de Solicitud</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for solicitud in solicitudes %}
+                            <tr>
+                                <td>{{ solicitud.id }}</td>
+                                <td>{{ solicitud.get_tipo_tramite_display }}</td>
+                                <td>
+                                    <span class="badge {% if solicitud.estado == 'APROBADO' %}bg-success
+                                                    {% elif solicitud.estado == 'PENDIENTE' %}bg-warning
+                                                    {% else %}bg-danger{% endif %}">
+                                        {{ solicitud.get_estado_display }}
+                                    </span>
+                                </td>
+                                <td>{{ solicitud.fecha_solicitud|date:"d/m/Y" }}</td>
+                                <td>
+                                    <a href="#" class="btn btn-sm btn-outline-primary">Ver</a>
+                                    <a href="#" class="btn btn-sm btn-outline-secondary">Editar</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                                {% else %}
+                <p class="text-muted text-center">No hay solicitudes para este productor.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sección de Historial -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">🕐 Historial de Cambios</h5>
+            </div>
+            <div class="card-body">
+                {% if historial %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Modelo</th>
+                                <th>Acción</th>
+                                <th>Usuario</th>
+                                <th>Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in historial %}
+                            <tr>
+                                <td>{{ item.timestamp|date:"d/m/Y H:i" }}</td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ item.modelo }} #{{ item.objeto_id }}</span>
+                                </td>
+                                <td>{{ item.accion }}</td>
+                                <td>{{ item.user.username|default:"Sistema" }}</td>
+                                <td>
+                                    {% if item.accion == 'TRANSFERENCIA_POR_SOLICITUD' %}
+                                        <small class="text-muted">
+                                            Transferencia desde Solicitud #{{ item.snapshot.solicitud_id }}<br>
+                                            <span class="text-danger">{{ item.snapshot.anterior.productor }}</span>
+                                            →
+                                            <span class="text-success">{{ item.snapshot.nuevo.productor }}</span>
+                                        </small>
+                                    {% elif item.accion == 'MODIFICACION_POR_SOLICITUD' %}
+                                        <small class="text-muted">
+                                            Marca actualizada desde Solicitud #{{ item.snapshot.solicitud_id }}<br>
+                                            {% if item.snapshot.anterior.descripcion_marca != item.snapshot.nuevo.descripcion_marca %}
+                                                <strong>Descripción marca:</strong>
+                                                <span class="text-danger">{{ item.snapshot.anterior.descripcion_marca|truncatechars:40 }}</span>
+                                                →
+                                                <span class="text-success">{{ item.snapshot.nuevo.descripcion_marca|truncatechars:40 }}</span>
+                                            {% endif %}
+                                        </small>
+                                    {% else %}
+                                        <small class="text-muted">{{ item.snapshot.estado|default:"" }}</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center mb-0">No hay cambios registrados todavía.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if campos %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const mapEl = document.getElementById('map-campos-productor');
+    if (!mapEl) return;
+
+    const mapCampos = L.map('map-campos-productor').setView([-28.4696, -65.7852], 8);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri'
+    }).addTo(mapCampos);
+
+    const campos = [
+        {% for c in campos %}
+        {% if c.poligono %}
+        { id: {{ c.id }}, nombre: "{{ c.nombre|escapejs }}", geojson: {{ c.poligono.geojson|safe }} },
+        {% endif %}
+        {% endfor %}
+    ];
+
+    const layersById = {};
+    let boundsAll = [];
+
+    campos.forEach(function(campo) {
+        const layer = L.geoJSON(campo.geojson, {
+            style: { color: '#198754', weight: 3, fillOpacity: 0.25 }
+        }).addTo(mapCampos);
+        layer.bindTooltip(campo.nombre);
+        layersById[campo.id] = layer;
+        boundsAll.push(layer.getBounds());
+    });
+
+    if (boundsAll.length > 0) {
+        let combined = boundsAll[0];
+        boundsAll.forEach(b => { combined = combined.extend(b); });
+        mapCampos.fitBounds(combined, { padding: [20, 20] });
+    }
+
+    document.querySelectorAll('#lista-campos-productor [data-campo-id]').forEach(function(li) {
+        li.addEventListener('click', function() {
+            const id = parseInt(this.getAttribute('data-campo-id'), 10);
+            const layer = layersById[id];
+            if (layer) {
+                mapCampos.fitBounds(layer.getBounds(), { padding: [40, 40] });
+            }
+        });
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

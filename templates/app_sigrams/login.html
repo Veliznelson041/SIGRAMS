@@ -1,0 +1,89 @@
+{% extends 'app_sigrams/base.html' %}
+
+{% block title %}Iniciar Sesión - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow border-catamarca">
+            <div class="card-header bg-catamarca text-white text-center">
+                <h4 class="mb-0">🔐 Iniciar Sesión</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Usuario</label>
+                        <input type="text" class="form-control" id="username" name="username" 
+                               placeholder="Ingrese su usuario" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Contraseña</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" name="password"
+                                   placeholder="Ingrese su contraseña" required>
+                            <button class="btn btn-outline-secondary" type="button"
+                                    onclick="togglePass()">👁</button>
+                        </div>
+                    </div>
+                    <!-- reCAPTCHA -->
+                    <div class="mb-3 d-flex justify-content-center">
+                        <div class="g-recaptcha"
+                             data-sitekey="6Letd2stAAAAALTt16k3hvnOirYrRltQNkFHAhyd">
+                        </div>
+                    </div>
+                    {% if recaptcha_error %}
+                    <div class="alert alert-danger small">
+                        {{ recaptcha_error }}
+                    </div>
+                    {% endif %}
+
+                    <button type="submit" class="btn btn-catamarca w-100 py-2">
+                        Ingresar al Sistema
+                    </button>
+                </form>
+                
+                <div class="text-center mt-3">
+                    <p class="mb-1">
+                        <a href="{% url 'password_reset' %}" class="text-muted small">
+                            ¿Olvidaste tu contraseña?
+                        </a>
+                    </p>
+                    <p class="mb-1">
+                        <a href="{% url 'activar_cuenta' %}" class="text-muted small">
+                            ¿Tenés un código de activación? Activá tu cuenta aquí
+                        </a>
+                    </p>
+                    <p class="mb-0">¿No tenés cuenta?
+                        <a href="{% url 'register' %}" class="text-catamarca">Registrate aquí</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-3">
+            <small class="text-muted">
+                Sistema de Gestión de Marcas y Señales<br>
+                Ministerio de Producción - Catamarca
+            </small>
+        </div>
+    </div>
+</div>
+{% block scripts %}
+<script>
+function togglePass() {
+    const input = document.getElementById('password');
+    const btn = input.nextElementSibling;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+    }
+}
+</script>
+
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+{% endblock %}
+{% endblock %}

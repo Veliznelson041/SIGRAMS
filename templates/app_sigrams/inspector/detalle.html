@@ -1,0 +1,196 @@
+{% extends 'app_sigrams/base_inspector.html' %}
+{% load l10n %}
+
+{% block title %}Detalle - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-catamarca">Detalle de Productor y Marca</h1>
+    <a href="{% url 'busqueda_inspector' %}" class="btn btn-outline-secondary">← Volver a la búsqueda</a>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-catamarca text-white">
+                <h5 class="mb-0">Datos del Productor</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th>Nombre:</th>
+                        <td>{{ marca.productor.nombre_completo }}</td>
+                    </tr>
+                    <tr>
+                        <th>Estado:</th>
+                        <td>
+                            <span class="badge {% if marca.productor.estado == 'REGISTRADO' %}bg-success
+                                            {% elif marca.productor.estado == 'BAJA' %}bg-danger
+                                            {% elif marca.productor.estado == 'PENDIENTE' %}bg-warning
+                                            {% else %}bg-secondary{% endif %}">
+                                {{ marca.productor.get_estado_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Campo:</th>
+                        <td>{{ marca.campo.nombre|default:"—" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        {% if marca.productor.latitud and marca.productor.longitud %}
+        <div class="card mb-4">
+            <div class="card-header bg-catamarca text-white">
+                <h5 class="mb-0">🗺️ Ubicación del Domicilio</h5>
+            </div>
+            <div class="card-body">
+                <div id="map-domicilio" style="height:300px;border-radius:8px;"></div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if marca.campo.poligono %}
+        <div class="card mb-4">
+            <div class="card-header bg-catamarca text-white">
+                <h5 class="mb-0">🗺️ Ubicación del Campo</h5>
+            </div>
+            <div class="card-body">
+                <div id="map-campo" style="height:300px;border-radius:8px;"></div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-catamarca text-white">
+                <h5 class="mb-0">Marca y Señal</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th>Descripción de Marca:</th>
+                        <td>{{ marca.descripcion_marca|linebreaks }}</td>
+                    </tr>
+                    <tr>
+                        <th>Descripción de Señal:</th>
+                        <td>{{ marca.descripcion_senal|default:"—"|linebreaks }}</td>
+                    </tr>
+                </table>
+                {% if marca.imagen_marca %}
+                <div class="text-center mt-2">
+                    <img src="{{ marca.imagen_marca.url }}" alt="Imagen de la marca" class="img-fluid rounded border" style="max-height:250px;">
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if marca.senales_orejeras %}
+        <div class="card mb-4">
+            <div class="card-header bg-catamarca text-white">
+                <h5 class="mb-0">🐄 Señales Orejeras</h5>
+            </div>
+            <div class="card-body">
+                <div class="bg-light rounded-3 border mb-3">
+                    <svg id="svg-orejas-inspector" viewBox="0 0 800 275" style="width:100%;display:block;">
+                        <g transform="translate(800,0) scale(-1,1)">
+                            <path d="M 468,128 C 532,113 612,118 659,134 Q 681,150 659,166 C 612,182 532,187 468,172 Z" fill="#D4A76A" stroke="#8B6914" stroke-width="2"/>
+                            <g id="insp-marcas-izq"></g>
+                        </g>
+                        <text x="192" y="107" text-anchor="middle" font-size="12" fill="#1D4ED8" font-weight="700">IZQ</text>
+                        <path d="M 468,128 C 532,113 612,118 659,134 Q 681,150 659,166 C 612,182 532,187 468,172 Z" fill="#D4A76A" stroke="#8B6914" stroke-width="2"/>
+                        <g id="insp-marcas-der"></g>
+                        <text x="608" y="107" text-anchor="middle" font-size="12" fill="#B91C1C" font-weight="700">DER</text>
+                        <ellipse cx="468" cy="150" rx="22" ry="24" fill="#D4A76A" stroke="#8B6914" stroke-width="1.5"/>
+                        <ellipse cx="332" cy="150" rx="22" ry="24" fill="#D4A76A" stroke="#8B6914" stroke-width="1.5"/>
+                        <ellipse cx="400" cy="182" rx="73" ry="85" fill="#D4A76A" stroke="#8B6914" stroke-width="2"/>
+                        <ellipse cx="400" cy="112" rx="41" ry="31" fill="#C8996A" stroke="#8B6914" stroke-width="1.5"/>
+                        <ellipse cx="388" cy="109" rx="8" ry="6" fill="#5C2D0A"/>
+                        <ellipse cx="412" cy="109" rx="8" ry="6" fill="#5C2D0A"/>
+                        <ellipse cx="373" cy="167" rx="12" ry="9" fill="#2C1A0E"/>
+                        <ellipse cx="427" cy="167" rx="12" ry="9" fill="#2C1A0E"/>
+                        <circle cx="375" cy="164" r="3.5" fill="white"/>
+                        <circle cx="429" cy="164" r="3.5" fill="white"/>
+                    </svg>
+                </div>
+                {% if marca.senales_orejeras.izquierda %}
+                <p class="mb-1"><strong style="color:#1D4ED8;">Izquierda:</strong> {{ marca.senales_orejeras.izquierda|join:", " }}</p>
+                {% endif %}
+                {% if marca.senales_orejeras.derecha %}
+                <p class="mb-0"><strong style="color:#B91C1C;">Derecha:</strong> {{ marca.senales_orejeras.derecha|join:", " }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{% if marca.senales_orejeras %}
+{{ marca.senales_orejeras|json_script:"datos-orejeras" }}
+{% endif %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if marca.senales_orejeras %}
+    (function() {
+        var LC = "#1D4ED8", RC = "#B91C1C";
+        var datos = JSON.parse(document.getElementById('datos-orejeras').textContent) || {};
+        var MAP = {
+            "Trébol":'<circle cx="663" cy="141" r="9" %F%/><circle cx="675" cy="154" r="9" %F%/><circle cx="651" cy="154" r="9" %F%/>',
+            "Cuadrado en la Punta":'<rect x="648" y="132" width="35" height="33" %F%/>',
+            "Cuadrado de Abajo":'<rect x="539" y="167" width="32" height="25" %F%/>',
+            "Cuadrado de Arriba":'<rect x="539" y="107" width="32" height="25" %F%/>',
+            "Anzuelo de Abajo":'<path d="M574,174 C574,195 553,199 546,183 C539,167 548,155 561,155" %S%/>',
+            "Anzuelo de Arriba":'<path d="M574,126 C574,105 553,101 546,117 C539,133 548,145 561,145" %S%/>',
+            "Zarcillo de Abajo":'<path d="M614,163 L614,183 Q607,191 600,183 L600,163" %F%/>',
+            "Zarcillo de Arriba":'<path d="M614,137 L614,117 Q607,109 600,117 L600,137" %F%/>',
+            "Raja en la Punta":'<rect x="640" y="147" width="43" height="6" rx="3" %F%/>',
+            "Tajo de Abajo":'<path d="M535,174 L562,174 L554,158 Z" %F%/>',
+            "Tajo de Arriba":'<path d="M535,126 L562,126 L554,142 Z" %F%/>',
+            "Ojo de Llave":'<circle cx="561" cy="141" r="12" %F%/><rect x="556" y="150" width="10" height="19" %F%/>',
+            "Agujero en el Centro":'<circle cx="561" cy="150" r="14" %F%/>',
+            "Hoja de Higuera":'<path d="M682,150 C669,130 646,128 652,150 C646,172 669,170 682,150 M658,128 C655,116 641,118 647,128 M658,172 C655,184 641,182 647,172" %F% stroke-width="1.5"/>',
+            "Punta de Lanza":'<path d="M645,129 L683,150 L645,171 L658,150 Z" %F%/>',
+            "Horqueta en la Punta":'<path d="M647,129 C664,138 683,148 664,159 C645,170 644,170 644,170" %S% stroke-width="4.5"/>',
+            "Horqueta de Abajo":'<path d="M537,174 Q558,199 579,174" %S%/>',
+            "Horqueta de Arriba":'<path d="M537,126 Q558,101 579,126" %S%/>',
+            "Sacado de Abajo":'<path d="M529,174 Q560,210 591,174 Z" %F%/>',
+            "Sacado de Arriba":'<path d="M529,126 Q560,90 591,126 Z" %F%/>',
+            "Muesca de Abajo":'<path d="M470,174 L484,160 L498,174 Z" %F%/>',
+            "Muesca de Arriba":'<path d="M470,126 L484,140 L498,126 Z" %F%/>'
+        };
+        function shape(nombre, color) {
+            var raw = MAP[nombre];
+            if (!raw) return '';
+            var f = 'fill="' + color + '" stroke="' + color + '" stroke-width="2" opacity="0.88"';
+            var s = 'fill="none" stroke="' + color + '" stroke-width="5.5" opacity="0.88" stroke-linecap="round"';
+            return raw.replace(/%F%/g, f).replace(/%S%/g, s);
+        }
+        var gi = document.getElementById('insp-marcas-izq');
+        var gd = document.getElementById('insp-marcas-der');
+        if (gi && datos.izquierda) datos.izquierda.forEach(function(n) { gi.innerHTML += shape(n, LC); });
+        if (gd && datos.derecha) datos.derecha.forEach(function(n) { gd.innerHTML += shape(n, RC); });
+    })();
+    {% endif %}
+
+    {% if marca.productor.latitud and marca.productor.longitud %}
+
+    const mapDom = L.map('map-domicilio').setView([{{ marca.productor.latitud|unlocalize }}, {{ marca.productor.longitud|unlocalize }}], 14);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri' }).addTo(mapDom);
+    L.marker([{{ marca.productor.latitud|unlocalize }}, {{ marca.productor.longitud|unlocalize }}]).addTo(mapDom);
+    {% endif %}
+
+    {% if marca.campo.poligono %}
+    const mapCampo = L.map('map-campo');
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri' }).addTo(mapCampo);
+    const geojsonCampo = {{ marca.campo.poligono.geojson|safe }};
+    const layerCampo = L.geoJSON(geojsonCampo, { style: { color: '#198754', weight: 3, fillOpacity: 0.25 } }).addTo(mapCampo);
+    mapCampo.fitBounds(layerCampo.getBounds(), { padding: [20, 20] });
+    {% endif %}
+});
+</script>
+{% endblock %}

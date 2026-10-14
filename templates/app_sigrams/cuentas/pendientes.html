@@ -1,0 +1,149 @@
+{% extends 'app_sigrams/base.html' %}
+
+{% block title %}Cuentas Pendientes - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-catamarca">🔐 Cuentas Pendientes de Aprobación</h1>
+    <a href="{% url 'home' %}" class="btn btn-outline-secondary">← Volver al Dashboard</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if pendientes %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Nombre completo</th>
+                        <th>Email</th>
+                        <th>Fecha de solicitud</th>
+                        <th>Asignar rol y aprobar</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in pendientes %}
+                    <tr>
+                        <td><strong>{{ p.user.username }}</strong></td>
+                        <td>{{ p.user.get_full_name }}</td>
+                        <td>{{ p.user.email }}</td>
+                        <td>{{ p.user.date_joined|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <form method="post" action="{% url 'aprobar_cuenta' p.user.id %}" class="d-flex gap-2 form-aprobar-cuenta">
+                                {% csrf_token %}
+                                <select name="rol" class="form-select form-select-sm" style="max-width:160px;" required>
+                                    <option value="">Elegir rol...</option>
+                                    <option value="empleado">Empleado</option>
+                                    <option value="inspector">Inspector</option>
+                                    <option value="admin">Administrador</option>
+                                </select>
+                                <button type="submit" class="btn btn-success btn-sm">✅ Aprobar</button>
+                            </form>
+                        </td>
+                        <td>
+                            <a href="{% url 'rechazar_cuenta' p.user.id %}"
+                               class="btn btn-outline-danger btn-sm confirmar-accion"
+                               data-mensaje="¿Rechazar la solicitud de cuenta de {{ p.user.username }}?">
+                                ❌ Rechazar
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center mb-0">No hay cuentas pendientes de aprobación.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">📋 Historial de Cuentas Procesadas</h5>
+    </div>
+    <div class="card-body">
+        {% if historial %}
+        <div class="table-responsive">
+            <table class="table table-sm table-striped">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Estado</th>
+                        <th>Rol</th>
+                        <th>Procesado por</th>
+                        <th>Fecha</th>
+                        <th>Código generado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for h in historial %}
+                    <tr>
+                        <td>{{ h.user.username }}</td>
+                        <td>
+                            <span class="badge {% if h.estado_cuenta == 'APROBADA' %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ h.get_estado_cuenta_display }}
+                            </span>
+                        </td>
+                        <td>{{ h.get_rol_display }}</td>
+                        <td>{{ h.aprobado_por.username|default:"—" }}</td>
+                        <td>{{ h.fecha_aprobacion|date:"d/m/Y H:i"|default:"—" }}</td>
+                        <td>
+                            {% if h.codigo_historico %}
+                                <code>{{ h.codigo_historico }}</code>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center mb-0">Todavía no se procesó ninguna cuenta.</p>
+        {% endif %}
+    </div>
+</div>
+
+
+<script>
+document.querySelectorAll('.confirmar-accion').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const url = this.getAttribute('href');
+        const mensaje = this.getAttribute('data-mensaje') || '¿Está seguro?';
+
+        Swal.fire({
+            title: 'Confirmar acción',
+            text: mensaje,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, continuar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#0A2E5A',
+            cancelButtonColor: '#6c757d'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                window.location.href = url;
+            }
+        });
+    });
+});
+</script>
+<script>
+document.querySelectorAll('.form-aprobar-cuenta').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+        const btn = form.querySelector('button[type="submit"]');
+        if (btn.disabled) {
+            e.preventDefault();
+            return;
+        }
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Procesando...';
+    });
+});
+</script>
+{% endblock %}

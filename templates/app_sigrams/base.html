@@ -1,0 +1,553 @@
+
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Marcas y Señales - Catamarca{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Control Geocoder CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <style>
+/* ===============================
+   VARIABLES (identidad visual)
+================================ */
+    :root {
+        --catamarca-primary: #0A2E5A;
+        --catamarca-secondary: #1E6BA6;
+        --success-color: #28a745;
+        --danger-color: #dc3545;
+        --muted-color: #6c757d;
+    }
+
+/* ===============================
+   COLORES Y BOTONES
+================================ */
+    .bg-catamarca {
+        background-color: var(--catamarca-primary) !important;
+    }
+
+    .text-catamarca {
+        color: var(--catamarca-primary);
+    }
+
+    .border-catamarca {
+        border-color: var(--catamarca-primary) !important;
+    }
+
+    .btn-catamarca {
+        background-color: var(--catamarca-primary);
+        color: white;
+    }
+
+    .btn-catamarca:hover {
+        background-color: var(--catamarca-secondary);
+        color: white;
+    }
+
+/* ===============================
+   NAVBAR / SIDEBAR
+================================ */
+    .navbar-brand {
+        font-weight: bold;
+    }
+
+    .sidebar {
+        background-color: #f8f9fa;
+        min-height: calc(100vh - 56px);
+    }
+
+/* ===============================
+   MAPA
+================================ */
+    .map-container {
+        position: relative;
+    }
+
+    #map {
+        height: 400px;
+        width: 100%;
+        border-radius: 8px;
+        border: 2px solid var(--catamarca-primary);
+    }
+
+    .map-coordinates {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        z-index: 1000;
+        font-size: 12px;
+    }
+
+    .search-container {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 1000;
+        width: 300px;
+    }
+
+/* ===============================
+   VALIDACIONES DE FORMULARIOS
+================================ */
+    .field-errors {
+        color: var(--danger-color);
+        font-size: 0.875em;
+        margin-top: 0.25rem;
+    }
+
+    .form-control.is-invalid {
+        border-color: var(--danger-color);
+        padding-right: calc(1.5em + 0.75rem);
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right calc(0.375em + 0.1875rem) center;
+        background-size: calc(0.75em + 0.375rem);
+    }
+
+    .form-control.is-valid {
+        border-color: var(--success-color);
+        padding-right: calc(1.5em + 0.75rem);
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right calc(0.375em + 0.1875rem) center;
+        background-size: calc(0.75em + 0.375rem);
+    }
+
+/* ===============================
+   TEXTOS DE AYUDA
+================================ */
+    .help-text {
+        font-size: 0.875em;
+        color: var(--muted-color);
+        margin-top: 0.25rem;
+    }
+
+    .help-text ul {
+        margin-bottom: 0;
+        padding-left: 1.25rem;
+    }
+
+    .help-text li {
+        margin-bottom: 0.25rem;
+    }
+
+/* ===============================
+   ALERTAS
+================================ */
+    .alert.alert-error {
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+        color: #721c24;
+    }
+
+    .alert.alert-success {
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+        color: #155724;
+    }
+    </style>
+
+</head>
+<body class="bg-light">
+    <!-- Barra de navegación -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-catamarca">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'home' %}">
+                🐄 SIGRAMS - Ganadería Catamarca
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+    {% if user.is_authenticated %}
+
+        <!-- Campana de notificaciones -->
+        <div class="nav-item dropdown me-3">
+            <a class="nav-link dropdown-toggle" href="#" id="notificacionesDropdown"
+               role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                🔔 
+                <span id="contador-notificaciones" class="badge bg-danger rounded-pill">0</span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end"
+                aria-labelledby="notificacionesDropdown"
+                style="min-width: 350px; max-height: 400px; overflow-y: auto;">
+                
+                <li><h6 class="dropdown-header">Notificaciones recientes</h6></li>
+                
+                <li>
+                    <div id="lista-notificaciones-dropdown">
+                        <div class="dropdown-item text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                
+                <li><hr class="dropdown-divider"></li>
+                
+                <li>
+                    <a class="dropdown-item text-center" href="{% url 'lista_notificaciones' %}">
+                        <strong>Ver todas las notificaciones</strong>
+                    </a>
+                </li>
+                
+                <li>
+                    <a class="dropdown-item text-center text-success"
+                       href="#" id="marcar-todas-leidas">
+                        ✅ Marcar todas como leídas
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Usuario -->
+        <span class="navbar-text me-3">
+            Hola, <strong>{{ user.username }}</strong>
+        </span>
+
+        <!-- Logout -->
+        <a class="btn btn-outline-light btn-sm" href="{% url 'logout' %}">
+            Cerrar sesión
+        </a>
+
+    {% else %}
+        <a class="btn btn-outline-light btn-sm me-2" href="{% url 'login' %}">
+            Iniciar sesión
+        </a>
+        <a class="btn btn-light btn-sm" href="{% url 'register' %}">
+            Registrarse
+        </a>
+    {% endif %}
+</div>
+
+        </div>
+    </nav>
+
+    <!-- Contenido principal -->
+    <div class="container-fluid">
+    <div class="row">
+        {% if user.is_authenticated %}
+        <!-- Sidebar para usuarios autenticados -->
+        <div class="col-md-3 col-lg-2 sidebar p-3">
+            <nav class="nav flex-column">
+                <h6 class="text-catamarca mb-3">MENÚ PRINCIPAL</h6>
+                
+                <a class="nav-link text-dark mb-2" href="{% url 'home' %}">
+                    📊 Dashboard
+                </a>
+                
+                <div class="dropdown-divider"></div>
+                
+                <small class="text-muted mb-2">GESTIÓN DE REGISTROS</small>
+                <a class="nav-link text-dark mb-1 {% if '/marcas/' in request.path %}fw-bold{% endif %}"                   href="{% url 'lista_marcas' %}">
+                    🏷️ Marcas y Señales
+                </a>
+                <a class="nav-link text-dark mb-2 ps-3 {% if '/productores/' in request.path %}fw-bold{% endif %}"
+                   href="{% url 'lista_productores' %}"
+                   style="font-size:0.9rem;">
+                    👨‍🌾 Productores
+                </a>
+                <a class="nav-link text-dark mb-2 {% if '/solicitudes/' in request.path %}fw-bold{% endif %}"
+                   href="{% url 'lista_solicitudes' %}">
+                    📋 Solicitudes
+                </a>
+
+                {% if user_profile.rol == 'admin' %}
+                <a class="nav-link text-dark mb-2" href="{% url 'dashboard_admin' %}">
+                    📊 Dashboard Admin
+                </a>
+                {% endif %}
+                
+                {% if user_profile and user_profile.rol == 'admin' %}
+                <div class="dropdown-divider"></div>
+                <small class="text-muted mb-2">ADMINISTRACIÓN</small>
+                <a class="nav-link text-dark mb-2" href="{% url 'cuentas_pendientes' %}">
+                    🔐 Cuentas Pendientes
+                </a>
+                <a class="nav-link text-dark mb-2" href="{% url 'historial_eliminaciones' %}">
+                    🗑️ Historial de Eliminaciones
+                </a>
+                <a class="nav-link text-dark mb-2" href="/admin/" target="_blank">
+                    ⚙️ Panel Admin
+                </a>
+                {% endif %}
+            </nav>
+        </div>
+        <div class="col-md-9 col-lg-10 p-4">
+        {% else %}
+        <div class="col-12 p-4">
+        {% endif %}
+            {% block content %}
+            {% endblock %}
+        </div>
+    </div>
+</div>
+
+    <!-- Mensajes -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        {% for message in messages %}
+        <div class="toast show" role="alert">
+            <div class="toast-header {% if message.tags %}bg-{{ message.tags }}{% endif %} text-white">
+                <strong class="me-auto">
+                    {% if message.tags == 'success' %}✅
+                    {% elif message.tags == 'error' %}❌
+                    {% elif message.tags == 'warning' %}⚠️
+                    {% else %}ℹ️{% endif %}
+                    {{ message.tags|title }}
+                </strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                {{ message }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <footer class="bg-dark text-white text-center py-3 mt-5">
+        <p class="mb-0">Sistema de Gestión de Marcas y Señales © 2025 - Ministerio de Producción de Catamarca</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Incluir el script de geocodificación -->
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+    <!-- Bloque para scripts específicos de cada template (ej: el código del mapa) -->
+    {% block scripts %}{% endblock %}
+<script src="{% static 'js/validaciones.js' %}"></script>
+<audio id="sonido-notificacion" preload="auto">
+    <source src="data:audio/wav;base64,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" type="audio/wav">
+</audio>
+<script>
+let _ultimoContadorNotificaciones = null;
+
+// Función para actualizar el contador de notificaciones
+function actualizarContadorNotificaciones() {
+    fetch('/notificaciones/api/contador/')
+        .then(response => response.json())
+        .then(data => {
+            const contador = document.getElementById('contador-notificaciones');
+            if (contador) {
+                // Sonar solo si el contador AUMENTÓ respecto a la última vez
+                // (no en la primera carga de la página, ni cuando baja).
+                if (_ultimoContadorNotificaciones !== null && data.count > _ultimoContadorNotificaciones) {
+                    const audio = document.getElementById('sonido-notificacion');
+                    if (audio) {
+                        audio.currentTime = 0;
+                        audio.play().catch(() => {
+                            // Los navegadores bloquean el autoplay de audio hasta que
+                            // el usuario interactúe con la página al menos una vez;
+                            // en ese caso simplemente no suena, sin romper nada.
+                        });
+                    }
+                }
+                _ultimoContadorNotificaciones = data.count;
+
+                contador.textContent = data.count;
+                if (data.count > 0) {
+                    contador.classList.remove('d-none');
+                    // Hacer parpadear la campana si hay notificaciones nuevas
+                    const campana = document.querySelector('[data-bs-toggle="dropdown"]');
+                    if (campana && !campana.classList.contains('parpadeo')) {
+                        campana.classList.add('parpadeo');
+                    }
+                } else {
+                    contador.classList.add('d-none');
+                    const campana = document.querySelector('[data-bs-toggle="dropdown"]');
+                    if (campana) {
+                        campana.classList.remove('parpadeo');
+                    }
+                }
+            }
+        })
+        .catch(error => console.error('Error al obtener contador:', error));
+}
+
+// Función para cargar notificaciones en el dropdown
+function cargarNotificacionesDropdown() {
+    fetch('/notificaciones/api/no-leidas/')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('lista-notificaciones-dropdown');
+            if (container) {
+                if (data.notificaciones.length === 0) {
+                    container.innerHTML = `
+                        <div class="dropdown-item text-center py-3">
+                            <p class="text-muted mb-0">No tienes notificaciones nuevas</p>
+                        </div>
+                    `;
+                } else {
+                    let html = '';
+                    data.notificaciones.forEach(notif => {
+                        const icono = {
+                            'info': 'ℹ️',
+                            'alerta': '⚠️',
+                            'urgente': '🚨',
+                            'exito': '✅',
+                            'error': '❌'
+                        }[notif.tipo] || '📢';
+                        
+                        html += `
+                            <a href="${notif.url}" class="dropdown-item ${notif.es_reciente ? 'bg-light' : ''}" 
+                               onclick="marcarNotificacionLeida(${notif.id}, event)">
+                                <div class="d-flex w-100">
+                                    <div class="me-2">${icono}</div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between">
+                                            <strong class="mb-1">${notif.titulo}</strong>
+                                            <small class="text-muted">${notif.tiempo}</small>
+                                        </div>
+                                        <p class="mb-0 small text-truncate">${notif.mensaje}</p>
+                                    </div>
+                                </div>
+                            </a>
+                            <div class="dropdown-divider"></div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                }
+            }
+        })
+        .catch(error => console.error('Error al cargar notificaciones:', error));
+}
+
+// Función para marcar una notificación como leída
+function marcarNotificacionLeida(notificacionId, event) {
+    event.preventDefault();
+    const url = event.currentTarget.getAttribute('href');
+    
+    fetch(`/notificaciones/${notificacionId}/leida/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Actualizar contador
+            actualizarContadorNotificaciones();
+            // Redirigir a la URL
+            if (url && url !== '#') {
+                window.location.href = url;
+            }
+        }
+    })
+    .catch(error => console.error('Error al marcar como leída:', error));
+}
+
+// Función para marcar todas como leídas
+document.getElementById('marcar-todas-leidas')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    fetch('/notificaciones/marcar-todas-leidas/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            actualizarContadorNotificaciones();
+            cargarNotificacionesDropdown();
+            // Mostrar mensaje de éxito
+            showToast('Todas las notificaciones marcadas como leídas', 'success');
+        }
+    })
+    .catch(error => console.error('Error al marcar todas como leídas:', error));
+});
+
+// Helper para obtener cookie CSRF
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Función para mostrar toasts
+function showToast(message, type = 'info') {
+    const toastContainer = document.querySelector('.toast-container');
+    if (!toastContainer) return;
+    
+    const toastId = 'toast-' + Date.now();
+    const toastHtml = `
+        <div id="${toastId}" class="toast" role="alert">
+            <div class="toast-header bg-${type} text-white">
+                <strong class="me-auto">Notificación</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">${message}</div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    const toast = new bootstrap.Toast(document.getElementById(toastId));
+    toast.show();
+    
+    // Remover después de 5 segundos
+    setTimeout(() => {
+        document.getElementById(toastId)?.remove();
+    }, 5000);
+}
+
+// Auto-ocultar los toasts de mensajes que vienen renderizados desde el servidor
+document.querySelectorAll('.toast-container .toast.show').forEach(function(toastEl) {
+    const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+    toast.show();
+});
+
+// Cargar notificaciones al abrir el dropdown
+document.getElementById('notificacionesDropdown')?.addEventListener('shown.bs.dropdown', function () {
+    cargarNotificacionesDropdown();
+});
+
+// Actualizar contador cada 30 segundos
+if (window.location.pathname !== '/notificaciones/') {
+    actualizarContadorNotificaciones();
+    setInterval(actualizarContadorNotificaciones, 30000); // Actualizar cada 30 segundos
+}
+
+// Estilos CSS para el parpadeo
+const style = document.createElement('style');
+style.textContent = `
+    .parpadeo {
+        animation: parpadeo 1s infinite;
+    }
+    @keyframes parpadeo {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+`;
+document.head.appendChild(style);
+</script>
+</body>
+</html>
+

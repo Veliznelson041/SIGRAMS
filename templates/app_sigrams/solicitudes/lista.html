@@ -1,0 +1,242 @@
+{% extends 'app_sigrams/base.html' %}
+
+{% block title %}Solicitudes - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-catamarca">Gestión de Solicitudes</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'home' %}" class="btn btn-info me-2">
+            📊 Dashboard
+        </a>
+        <a href="{% url 'mis_solicitudes' %}" class="btn btn-secondary me-2">
+            📋 Mis Solicitudes
+        </a>
+        <a href="{% url 'nueva_solicitud' %}" class="btn btn-catamarca">
+            📄 Nueva Solicitud
+        </a>
+    </div>
+</div>
+
+<!-- Estadísticas rápidas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5 class="card-title">Total</h5>
+                <p class="card-text h2">{{ total_solicitudes }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <h5 class="card-title">Pendientes</h5>
+                <p class="card-text h2">{{ solicitudes_pendientes }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h5 class="card-title">En Revisión</h5>
+                <p class="card-text h2">{{ solicitudes_en_revision }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <h5 class="card-title">Vencidas</h5>
+                <p class="card-text h2">{{ solicitudes_vencidas }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros avanzados -->
+<div class="card mb-4">
+    <div class="card-header bg-catamarca text-white">
+        <h5 class="mb-0">Filtros de Búsqueda</h5>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Estado</label>
+                <select name="estado" class="form-control">
+                    <option value="">Todos los estados</option>
+                    <option value="PENDIENTE" {% if estado_filtro == 'PENDIENTE' %}selected{% endif %}>Pendiente</option>
+                    <option value="EN_REVISION" {% if estado_filtro == 'EN_REVISION' %}selected{% endif %}>En revisión</option>
+                    <option value="APROBADO" {% if estado_filtro == 'APROBADO' %}selected{% endif %}>Aprobado</option>
+                    <option value="RECHAZADO" {% if estado_filtro == 'RECHAZADO' %}selected{% endif %}>Rechazado</option>
+                    <option value="OBSERVADO" {% if estado_filtro == 'OBSERVADO' %}selected{% endif %}>Observado</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tipo de Trámite</label>
+                <select name="tipo_tramite" class="form-control">
+                    <option value="">Todos los trámites</option>
+                    <option value="NUEVO" {% if tipo_tramite_filtro == 'NUEVO' %}selected{% endif %}>Registro nuevo</option>
+                    <option value="RENOVACION" {% if tipo_tramite_filtro == 'RENOVACION' %}selected{% endif %}>Renovación</option>
+                    <option value="TRANSFERENCIA" {% if tipo_tramite_filtro == 'TRANSFERENCIA' %}selected{% endif %}>Transferencia</option>
+                    <option value="BAJA" {% if tipo_tramite_filtro == 'BAJA' %}selected{% endif %}>Baja</option>
+                    <option value="MODIFICACION" {% if tipo_tramite_filtro == 'MODIFICACION' %}selected{% endif %}>Modificación</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Prioridad</label>
+                <select name="prioridad" class="form-control">
+                    <option value="">Todas las prioridades</option>
+                    <option value="BAJA" {% if prioridad_filtro == 'BAJA' %}selected{% endif %}>Baja</option>
+                    <option value="MEDIA" {% if prioridad_filtro == 'MEDIA' %}selected{% endif %}>Media</option>
+                    <option value="ALTA" {% if prioridad_filtro == 'ALTA' %}selected{% endif %}>Alta</option>
+                    <option value="URGENTE" {% if prioridad_filtro == 'URGENTE' %}selected{% endif %}>Urgente</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Productor</label>
+                <select name="productor" class="form-control">
+                    <option value="">Todos los productores</option>
+                    {% for productor in productores %}
+                    <option value="{{ productor.id }}" {% if productor_filtro == productor.id|stringformat:"i" %}selected{% endif %}>
+                        {{ productor.nombre_completo }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Fecha desde</label>
+                <input type="date" name="fecha_inicio" class="form-control" value="{{ fecha_inicio_filtro }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Fecha hasta</label>
+                <input type="date" name="fecha_fin" class="form-control" value="{{ fecha_fin_filtro }}">
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+                <button type="submit" class="btn btn-catamarca me-2">Filtrar</button>
+                <a href="{% url 'lista_solicitudes' %}" class="btn btn-outline-secondary">Limpiar filtros</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="btn-group me-2">
+    <button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
+        📥 Exportar
+    </button>
+    <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="{% url 'reporte_solicitudes_pdf' %}">PDF</a></li>
+        <li><a class="dropdown-item" href="{% url 'reporte_solicitudes_excel' %}">Excel</a></li>
+    </ul>
+</div>
+
+<!-- Tabla de solicitudes -->
+<div class="card">
+    <div class="card-body">
+        {% if solicitudes %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Productor</th>
+                        <th>Tipo Trámite</th>
+                        <th>Prioridad</th>
+                        <th>Estado</th>
+                        <th>Fecha Solicitud</th>
+                        <th>Días</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for solicitud in solicitudes %}
+                    <tr class="{% if solicitud.esta_vencida %}table-danger{% elif solicitud.prioridad == 'URGENTE' %}table-warning{% elif solicitud.prioridad == 'ALTA' %}table-info{% endif %}">
+                        <td>
+                            <strong>#{{ solicitud.id }}</strong>
+                        </td>
+                        <td>
+                            <a href="{% url 'detalle_productor' solicitud.productor.pk %}">
+                                {{ solicitud.productor.nombre_completo|truncatechars:20 }}
+                            </a>
+                        </td>
+                        <td>{{ solicitud.get_tipo_tramite_display }}</td>
+                        <td>
+                            <span class="badge {% if solicitud.prioridad == 'URGENTE' %}bg-danger
+                                            {% elif solicitud.prioridad == 'ALTA' %}bg-warning
+                                            {% elif solicitud.prioridad == 'MEDIA' %}bg-primary
+                                            {% else %}bg-secondary{% endif %}">
+                                {{ solicitud.get_prioridad_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge {% if solicitud.estado == 'APROBADO' %}bg-success
+                                            {% elif solicitud.estado == 'RECHAZADO' %}bg-danger
+                                            {% elif solicitud.estado == 'EN_REVISION' %}bg-info
+                                            {% elif solicitud.estado == 'OBSERVADO' %}bg-warning
+                                            {% else %}bg-secondary{% endif %}">
+                                {{ solicitud.get_estado_display }}
+                            </span>
+                        </td>
+                        <td>{{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <span class="{% if solicitud.dias_pendientes > 7 %}text-danger{% elif solicitud.dias_pendientes > 3 %}text-warning{% endif %}">
+                                {{ solicitud.dias_pendientes }} días
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'detalle_solicitud' solicitud.pk %}" class="btn btn-outline-primary">Ver</a>
+                                {% if solicitud.solicitante == user %}
+                                <a href="{% url 'editar_solicitud' solicitud.pk %}" class="btn btn-outline-secondary">Editar</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <!-- Paginación -->
+            <nav aria-label="Paginación">
+                <ul class="pagination justify-content-center">
+                    {% if solicitudes.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ solicitudes.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            Anterior
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in solicitudes.paginator.page_range %}
+                        {% if solicitudes.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > solicitudes.number|add:'-3' and num < solicitudes.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                {{ num }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if solicitudes.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ solicitudes.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            Siguiente
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+            <p class="text-muted">No se encontraron solicitudes.</p>
+            <a href="{% url 'nueva_solicitud' %}" class="btn btn-catamarca">Crear primera solicitud</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

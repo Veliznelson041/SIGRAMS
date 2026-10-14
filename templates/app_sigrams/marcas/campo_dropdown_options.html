@@ -1,0 +1,4 @@
+<option value="">---------</option>
+{% for campo in campos %}
+<option value="{{ campo.id }}">{{ campo.nombre }} - {{ campo.distrito }}</option>
+{% endfor %}

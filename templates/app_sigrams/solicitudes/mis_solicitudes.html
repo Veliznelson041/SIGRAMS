@@ -1,0 +1,87 @@
+{% extends 'app_sigrams/base.html' %}
+{% block title %}Mis Solicitudes - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-catamarca mb-0">📋 Mis Solicitudes</h2>
+    <a href="{% url 'nueva_solicitud' %}" class="btn btn-catamarca">
+        + Nueva Solicitud
+    </a>
+</div>
+
+{% if solicitudes %}
+<div class="card shadow">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="bg-catamarca text-white">
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Productor</th>
+                        <th>Tipo de Trámite</th>
+                        <th>Estado</th>
+                        <th>Prioridad</th>
+                        <th>Fecha</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for solicitud in solicitudes %}
+                    <tr>
+                        <td class="ps-3"><strong>{{ solicitud.id }}</strong></td>
+                        <td>{{ solicitud.productor.nombre_completo }}</td>
+                        <td>
+                            <span class="badge bg-info text-dark">
+                                {{ solicitud.get_tipo_tramite_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge
+                                {% if solicitud.estado == 'PENDIENTE' %}bg-warning text-dark
+                                {% elif solicitud.estado == 'APROBADO' %}bg-success
+                                {% elif solicitud.estado == 'RECHAZADO' %}bg-danger
+                                {% elif solicitud.estado == 'EN_REVISION' %}bg-primary
+                                {% else %}bg-secondary{% endif %}">
+                                {{ solicitud.get_estado_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge
+                                {% if solicitud.prioridad == 'URGENTE' %}bg-danger
+                                {% elif solicitud.prioridad == 'ALTA' %}bg-warning text-dark
+                                {% elif solicitud.prioridad == 'MEDIA' %}bg-info text-dark
+                                {% else %}bg-secondary{% endif %}">
+                                {{ solicitud.get_prioridad_display }}
+                            </span>
+                        </td>
+                        <td class="text-muted small">
+                            {{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}
+                        </td>
+                        <td>
+                            <a href="{% url 'detalle_solicitud' solicitud.pk %}"
+                               class="btn btn-sm btn-outline-secondary">
+                                Ver detalle
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="card shadow">
+    <div class="card-body text-center py-5">
+        <div style="font-size:3.5rem;">📭</div>
+        <h4 class="text-muted mt-3">Todavía no iniciaste ningún trámite</h4>
+        <p class="text-muted">Cuando crees una solicitud, aparecerá aquí.</p>
+        <a href="{% url 'nueva_solicitud' %}" class="btn btn-catamarca mt-2">
+            Iniciar una solicitud
+        </a>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

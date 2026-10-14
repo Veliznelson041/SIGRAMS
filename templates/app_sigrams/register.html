@@ -1,0 +1,265 @@
+{% extends 'app_sigrams/base.html' %}
+
+{% block title %}Registro - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-catamarca text-white">
+                <h4 class="mb-0">Registro de Usuario</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" id="registerForm">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.username.id_for_label }}" class="form-label">
+                                    Nombre de usuario *
+                                </label>
+                                {{ form.username }}
+                                {% if form.username.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.username.errors %}
+                                    <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <div class="form-text">Letras, números y guiones bajos</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="{{ form.first_name.id_for_label }}" class="form-label">
+                                    Nombre *
+                                </label>
+                                {{ form.first_name }}
+                                {% if form.first_name.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.first_name.errors %}
+                                    <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <div class="form-text">Solo letras y espacios</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="{{ form.last_name.id_for_label }}" class="form-label">
+                                    Apellido *
+                                </label>
+                                {{ form.last_name }}
+                                {% if form.last_name.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.last_name.errors %}
+                                    <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <div class="form-text">Solo letras y espacios</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.email.id_for_label }}" class="form-label">
+                                    Email *
+                                </label>
+                                {{ form.email }}
+                                {% if form.email.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.email.errors %}
+                                    <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <div class="form-text">Ejemplo: usuario@dominio.com</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="{{ form.password1.id_for_label }}" class="form-label">
+                                    Contraseña *
+                                </label>
+                                <div class="input-group">
+                                    {{ form.password1 }}
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePass('{{ form.password1.id_for_label }}', this)">👁</button>
+                                </div>
+                                {% if form.password1.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.password1.errors %}
+                                    <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                {{ form.password1.help_text|safe }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="{{ form.password2.id_for_label }}" class="form-label">
+                                    Confirmar Contraseña *
+                                </label>
+                                <div class="input-group">
+                                    {{ form.password2 }}
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePass('{{ form.password2.id_for_label }}', this)">👁</button>
+                                </div>
+                                {% if form.password2.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.password2.errors %}
+                                    <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <div class="mb-3 d-flex justify-content-center">
+                        <div class="g-recaptcha"
+                             data-sitekey="6Letd2stAAAAALTt16k3hvnOirYrRltQNkFHAhyd">
+                        </div>
+                    </div>
+                    {% if recaptcha_error %}
+                    <div class="alert alert-danger small">
+                        {{ recaptcha_error }}
+                    </div>
+                    {% endif %}
+                        <button type="submit" class="btn btn-catamarca btn-lg w-100">
+                            📝 Registrar Cuenta
+                        </button>
+                    </div>
+                    
+                    <div class="mt-3 text-center">
+                        <p>¿Ya tienes cuenta? <a href="{% url 'login' %}">Inicia sesión aquí</a></p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePass(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('registerForm');
+    
+    // Validación en tiempo real
+    const inputs = form.querySelectorAll('input[required]');
+    inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            validateField(this);
+        });
+    });
+    
+    function validateField(field) {
+        const value = field.value.trim();
+        const fieldName = field.name;
+        
+        // Validaciones específicas por campo
+        switch(fieldName) {
+            case 'username':
+                if (!/^[A-Za-z0-9_]+$/.test(value)) {
+                    showError(field, 'Solo letras, números y guiones bajos');
+                } else {
+                    clearError(field);
+                }
+                break;
+                
+            case 'first_name':
+            case 'last_name':
+                if (!/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) {
+                    showError(field, 'Solo letras y espacios');
+                } else {
+                    clearError(field);
+                }
+                break;
+                
+            case 'email':
+                if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) {
+                    showError(field, 'Formato de email inválido');
+                } else {
+                    clearError(field);
+                }
+                break;
+                
+            case 'password1':
+                if (value.length < 8) {
+                    showError(field, 'Mínimo 8 caracteres');
+                } else if (!/[A-Z]/.test(value)) {
+                    showError(field, 'Falta una letra mayúscula');
+                } else if (!/[a-z]/.test(value)) {
+                    showError(field, 'Falta una letra minúscula');
+                } else if (!/[0-9]/.test(value)) {
+                    showError(field, 'Falta un número');
+                } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+                    showError(field, 'Falta un carácter especial');
+                } else {
+                    clearError(field);
+                }
+                break;
+        }
+    }
+    
+    function showError(field, message) {
+        const formGroup = field.closest('.mb-3');
+        let errorDiv = formGroup.querySelector('.text-danger');
+        
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'text-danger small mt-1';
+            formGroup.appendChild(errorDiv);
+        }
+        
+        errorDiv.textContent = message;
+        field.classList.add('is-invalid');
+    }
+    
+    function clearError(field) {
+        const formGroup = field.closest('.mb-3');
+        const errorDiv = formGroup.querySelector('.text-danger');
+        
+        if (errorDiv) {
+            errorDiv.remove();
+        }
+        
+        field.classList.remove('is-invalid');
+    }
+});
+</script>
+
+<style>
+.is-invalid {
+    border-color: #dc3545 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.form-text {
+    font-size: 0.875em;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+.text-danger {
+    font-size: 0.875em;
+}
+</style>
+
+{% block scripts %}
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+{% endblock %}
+{% endblock %}

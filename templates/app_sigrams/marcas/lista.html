@@ -1,0 +1,144 @@
+{% extends 'app_sigrams/base.html' %}
+
+{% block title %}Marcas y Señales - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-catamarca">Gestión de Marcas y Señales</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'nueva_marca' %}" class="btn btn-catamarca">
+            🏷️ Nueva Marca/Señal
+        </a>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <input type="text" name="q" class="form-control" placeholder="Buscar por productor, número de orden..." value="{{ query }}">
+            </div>
+            <div class="col-md-2">
+                <select name="estado" class="form-control">
+                    <option value="">Todos los estados</option>
+                    <option value="VIGENTE" {% if estado_filtro == 'VIGENTE' %}selected{% endif %}>Vigente</option>
+                    <option value="VENCIDA" {% if estado_filtro == 'VENCIDA' %}selected{% endif %}>Vencida</option>
+                    <option value="BAJA" {% if estado_filtro == 'BAJA' %}selected{% endif %}>Baja</option>
+                    <option value="EN_TRAMITE" {% if estado_filtro == 'EN_TRAMITE' %}selected{% endif %}>En trámite</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="tipo_tramite" class="form-control">
+                    <option value="">Todos los trámites</option>
+                    <option value="REGISTRO_MARCA_SENAL" {% if tipo_tramite_filtro == 'REGISTRO_MARCA_SENAL' %}selected{% endif %}>Registro Marca y Señal</option>
+                    <option value="REGISTRO_SENALES" {% if tipo_tramite_filtro == 'REGISTRO_SENALES' %}selected{% endif %}>Registro Señales solas</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-catamarca w-100">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="btn-group me-2">
+    <button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
+        📥 Exportar
+    </button>
+    <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="{% url 'reporte_marcas_pdf' %}">PDF</a></li>
+        <li><a class="dropdown-item" href="{% url 'reporte_marcas_excel' %}">Excel</a></li>
+    </ul>
+</div>
+
+<!-- Tabla de marcas -->
+<div class="card">
+    <div class="card-body">
+        {% if marcas %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>N° Orden</th>
+                        <th>Productor</th>
+                        <th>Tipo Trámite</th>
+                        <th>Estado</th>
+                        <th>Fecha Inscripción</th>
+                        <th>Total Ganado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for marca in marcas %}
+                    <tr>
+                        <td>
+                            <strong>{{ marca.numero_orden }}</strong>
+                        </td>
+                        <td>{{ marca.productor.nombre_completo }}</td>
+                        <td>{{ marca.get_tipo_tramite_display }}</td>
+                        <td>
+                            <span class="badge {% if marca.estado == 'VIGENTE' %}bg-success
+                                            {% elif marca.estado == 'VENCIDA' %}bg-warning
+                                            {% elif marca.estado == 'BAJA' %}bg-danger
+                                            {% else %}bg-secondary{% endif %}">
+                                {{ marca.get_estado_display }}
+                            </span>
+                        </td>
+                        <td>{{ marca.fecha_inscripcion|date:"d/m/Y" }}</td>
+                        <td>{{ marca.total_ganado }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'detalle_marca' marca.pk %}" class="btn btn-outline-primary">Ver</a>
+                                <a href="{% url 'editar_marca' marca.pk %}" class="btn btn-outline-secondary">Editar</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if is_paginated %}
+        <nav aria-label="Paginación">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        Anterior
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            {{ num }}
+                        </a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        Siguiente
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-4">
+            <p class="text-muted">No se encontraron marcas o señales.</p>
+            <a href="{% url 'nueva_marca' %}" class="btn btn-catamarca">Agregar primera marca</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends 'app_sigrams/base.html' %}
+
+{% block title %}Revisión de Solicitud #{{ solicitud.id }} - SIGRAMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-catamarca">Revisión de Solicitud #{{ solicitud.id }}</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'detalle_solicitud' solicitud.pk %}" class="btn btn-outline-secondary">
+            ← Volver al detalle
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-catamarca">Guardar revisión</button>
+            <a href="{% url 'detalle_solicitud' solicitud.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

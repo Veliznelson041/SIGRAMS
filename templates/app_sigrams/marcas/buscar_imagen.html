@@ -1,0 +1,155 @@
+{% extends "app_sigrams/base.html" %}
+{% block title %}Buscar marca por imagen{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 800px;">
+  <div class="d-flex align-items-center mb-4 gap-3">
+    <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+      <i class="bi bi-search fs-4 text-primary"></i>
+    </div>
+    <div>
+      <h2 class="mb-0">Búsqueda de marca por imagen</h2>
+      <p class="text-muted mb-0 small">
+        Subí una fotografía de una marca y el sistema buscará registros similares.
+      </p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="mb-3">
+        <label for="img-busqueda" class="form-label fw-semibold">
+          <i class="bi bi-image me-1"></i> Fotografía de la marca
+        </label>
+        <input type="file" id="img-busqueda" accept="image/*" class="form-control form-control-lg">
+        <div class="form-text">Formatos aceptados: JPG, PNG, WEBP. La foto puede ser tomada desde el campo.</div>
+      </div>
+
+      <button type="button" id="btn-buscar-imagen" class="btn btn-primary btn-lg w-100" disabled>
+        <i class="bi bi-search me-2"></i> Buscar marcas similares
+      </button>
+
+      <span id="spinner-busqueda" class="d-none d-flex align-items-center justify-content-center mt-3 text-muted">
+        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        Analizando imagen y buscando coincidencias...
+      </span>
+    </div>
+  </div>
+
+  <div id="resultados-busqueda" class="mt-4 d-none">
+    <div class="d-flex align-items-center mb-3">
+      <h5 class="mb-0">Resultados</h5>
+      <span id="total-resultados" class="badge bg-primary ms-2 fs-6"></span>
+    </div>
+
+    <div id="bloque-marcas" class="d-none mb-4">
+      <h6 class="text-warning mb-3">
+        <i class="bi bi-tag-fill me-1"></i> Marcas registradas similares
+      </h6>
+      <div class="row g-3" id="cards-marcas"></div>
+    </div>
+
+    <div id="bloque-predefinidas" class="d-none mb-4">
+      <h6 class="text-info mb-3">
+        <i class="bi bi-images me-1"></i> Imágenes predefinidas similares
+      </h6>
+      <table class="table table-sm table-hover table-bordered">
+        <thead class="table-light">
+          <tr><th>Nombre</th><th>Tipo</th><th>Similitud</th></tr>
+        </thead>
+        <tbody id="tbody-predefinidas"></tbody>
+      </table>
+    </div>
+
+    <div id="sin-resultados" class="alert alert-info d-none">
+      <i class="bi bi-info-circle me-1"></i>
+      No se encontraron marcas similares en el sistema para esta imagen.
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const URL_BUSCAR = "{% url 'ajax_buscar_imagen_similar' %}";
+  const CSRF = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+
+  const inputBusqueda = document.getElementById("img-busqueda");
+  const btnBuscar     = document.getElementById("btn-buscar-imagen");
+
+  inputBusqueda.addEventListener("change", () => {
+    btnBuscar.disabled = !inputBusqueda.files.length;
+    document.getElementById("resultados-busqueda").classList.add("d-none");
+  });
+
+  btnBuscar.addEventListener("click", () => {
+    const archivo = inputBusqueda.files[0];
+    if (!archivo) return;
+    btnBuscar.disabled = true;
+    document.getElementById("spinner-busqueda").classList.remove("d-none");
+    document.getElementById("resultados-busqueda").classList.add("d-none");
+
+    const fd = new FormData();
+    fd.append("imagen", archivo);
+
+    fetch(URL_BUSCAR, { method: "POST", headers: { "X-CSRFToken": CSRF }, body: fd })
+      .then(r => r.json()).then(data => {
+        btnBuscar.disabled = false;
+        document.getElementById("spinner-busqueda").classList.add("d-none");
+        if (!data.ok) { alert("Error: " + (data.error || "desconocido")); return; }
+
+        document.getElementById("resultados-busqueda").classList.remove("d-none");
+        document.getElementById("total-resultados").textContent =
+          data.total + (data.total === 1 ? " coincidencia" : " coincidencias");
+
+        const marcas = data.resultados.marcas || [];
+        const preds  = data.resultados.predefinidas || [];
+
+        if (marcas.length) {
+          document.getElementById("cards-marcas").innerHTML = marcas.map(m => `
+            <div class="col-md-6">
+              <div class="card h-100 border-warning border-opacity-50">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="fw-bold fs-5">#${m.numero_orden}</span>
+                    ${badge(m.distancia)}
+                  </div>
+                  <p class="mb-1"><i class="bi bi-person-fill text-muted me-1"></i> <strong>${m.productor}</strong></p>
+                  <p class="text-muted small mb-3">${m.descripcion}</p>
+                  <a href="${m.url_detalle}" class="btn btn-warning btn-sm w-100">
+                    <i class="bi bi-eye me-1"></i> Ver detalle completo del productor
+                  </a>
+                </div>
+              </div>
+            </div>`).join("");
+          document.getElementById("bloque-marcas").classList.remove("d-none");
+        } else {
+          document.getElementById("bloque-marcas").classList.add("d-none");
+        }
+
+        if (preds.length) {
+          document.getElementById("tbody-predefinidas").innerHTML = preds.map(p =>
+            `<tr><td>${p.nombre}</td><td>${p.tipo_marca}</td><td>${badge(p.distancia)}</td></tr>`
+          ).join("");
+          document.getElementById("bloque-predefinidas").classList.remove("d-none");
+        } else {
+          document.getElementById("bloque-predefinidas").classList.add("d-none");
+        }
+
+        document.getElementById("sin-resultados").classList.toggle("d-none", data.total > 0);
+      })
+      .catch(err => {
+        btnBuscar.disabled = false;
+        document.getElementById("spinner-busqueda").classList.add("d-none");
+        console.error(err);
+        alert("Error de conexión.");
+      });
+  });
+
+  function badge(d) {
+    if (d === 0) return '<span class="badge bg-danger">Idéntica</span>';
+    if (d <= 4)  return '<span class="badge bg-warning text-dark">Muy similar</span>';
+    return '<span class="badge bg-info text-dark">Similar</span>';
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,1012 @@
+{% extends 'app_sigrams/base.html' %}
+
+{% block title %}{{ titulo }} - SIGRAMS{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<style>
+#map-campo { height: 420px; width: 100%; border-radius: 8px; border: 2px solid #0A2E5A; }
+</style>
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-catamarca">{{ titulo }}</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'lista_marcas' %}" class="btn btn-outline-secondary">
+            ← Volver a la lista
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" id="marcaForm">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="text-catamarca mb-3">Datos Básicos</h5>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.productor.id_for_label }}" class="form-label">Productor *</label>
+                        {{ form.productor }}
+                        {% if form.productor.errors %}
+                            <div class="text-danger small">{{ form.productor.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.campo.id_for_label }}" class="form-label">Campo *</label>
+                        {{ form.campo }}
+                        {% if form.campo.errors %}
+                        <div class="text-danger small">{{ form.campo.errors }}</div>
+                        {% endif %}
+                        <div class="form-text" id="campo-help-text">
+                            Selecciona primero un productor para ver el mapa de sus campos
+                        </div>
+                    </div>
+
+                    <!-- Panel de mapa de campos del productor -->
+                    <div id="panel-campos-mapa" class="card border-catamarca mb-3" style="display:none;">
+                        <div class="card-header py-2" style="background:#0A2E5A;">
+                            <h6 class="mb-0 text-white">🗺️ Campos del productor</h6>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="form-text mb-2 d-flex align-items-center flex-wrap gap-3">
+                                <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#198754;"></span> Campos ya guardados</span>
+                                <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#fd7e14;"></span> Campo que estás por guardar ahora</span>
+                                <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#dc3545;"></span> En edición</span>
+                            </div>
+                            <div id="map-campo"></div>
+                            <div class="mt-2 small text-muted" id="nc-area-info">Área del polígono: —</div>
+
+                            <div id="lista-campos-existentes" class="mt-3"></div>
+
+                            <hr>
+
+                            <div id="bloque-nuevo-campo">
+                                <label class="form-label">Nombre del nuevo campo</label>
+                                <input type="text" id="nc-nombre" class="form-control form-control-sm mb-2" placeholder="Ej: Campo Los Álamos">
+                                <div class="row mb-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small">Localidad / Distrito</label>
+                                        <input type="text" id="nc-distrito" class="form-control form-control-sm" placeholder="Se completa al dibujar">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small">Departamento</label>
+                                        <input type="text" id="nc-departamento" class="form-control form-control-sm" placeholder="Se completa al dibujar">
+                                    </div>
+                                </div>
+                                <div class="form-text mb-2">
+                                    Usá el ícono de polígono (arriba a la izquierda del mapa) para dibujar el límite del nuevo campo. La localidad y el departamento se completan solos.
+                                </div>
+                                <button type="button" id="btn-confirmar-campo" class="btn btn-catamarca btn-sm" disabled>
+                                    ✅ Guardar nuevo campo
+                                </button>
+                            </div>
+
+                            <div id="bloque-editar-campo" style="display:none;">
+                                <div class="alert alert-warning py-2 mb-2">
+                                    Editando: <strong id="editando-campo-nombre"></strong>. Mové los vértices del polígono resaltado en rojo.
+                                </div>
+                                <button type="button" id="btn-guardar-edicion" class="btn btn-warning btn-sm">
+                                    💾 Guardar cambios del polígono
+                                </button>
+                                <button type="button" id="btn-cancelar-edicion" class="btn btn-outline-secondary btn-sm">
+                                    Cancelar edición
+                                </button>
+                            </div>
+
+                            <div id="nc-error" class="text-danger small mt-2" style="display:none;"></div>
+                        </div>
+                    </div>
+
+<!-- BORRE EL PANEL POARA DIBUJAR EL POLIGONO DE NUEVO CAMPO, POR LO QUE SE REPETIA -->
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.tipo_tramite.id_for_label }}" class="form-label">
+                                Tipo de Trámite *
+                            </label>
+                            {{ form.tipo_tramite }}
+                            {% if form.tipo_tramite.errors %}
+                                <div class="text-danger small">
+                                    {{ form.tipo_tramite.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.fecha_inscripcion.id_for_label }}" class="form-label">Fecha de Inscripción *</label>
+                            {{ form.fecha_inscripcion }}
+                            {% if form.fecha_inscripcion.errors %}
+                                <div class="text-danger small">{{ form.fecha_inscripcion.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.fecha_vencimiento.id_for_label }}" class="form-label">Fecha de Vencimiento</label>
+                            {{ form.fecha_vencimiento }}
+                            {% if form.fecha_vencimiento.errors %}
+                                <div class="text-danger small">{{ form.fecha_vencimiento.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.estado.id_for_label }}" class="form-label">Estado *</label>
+                        {{ form.estado }}
+                        {% if form.estado.errors %}
+                            <div class="text-danger small">{{ form.estado.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <h5 class="text-catamarca mb-3">Marcas y Señales</h5>
+
+<!-- Galería de imágenes predefinidas con checkboxes -->
+<!-- ELIMINADO -->
+
+<!-- Vista previa de imágenes seleccionadas -->
+<!-- ELIMINADO -->
+
+                    <div class="mb-3">
+                        <label for="{{ form.descripcion_marca.id_for_label }}" class="form-label">Descripción de la Marca *</label>
+                        {{ form.descripcion_marca }}
+                        {% if form.descripcion_marca.errors %}
+                            <div class="text-danger small">{{ form.descripcion_marca.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.imagen_marca.id_for_label }}" class="form-label">Imagen de la Marca</label>
+                        {% if object and object.imagen_marca %}
+                        <div class="mb-2">
+                            <img src="{{ object.imagen_marca.url }}" alt="Imagen actual" class="img-thumbnail" style="max-height:120px;">
+                            <div class="form-text">Imagen actual. Subí un archivo nuevo solo si querés reemplazarla.</div>
+                        </div>
+                        {% endif %}
+                        {{ form.imagen_marca }}
+                        {% if form.imagen_marca.errors %}
+                            <div class="text-danger small">{{ form.imagen_marca.errors }}</div>
+                        {% endif %}
+                    </div>                    
+
+                    <div class="mb-3">
+                        <label for="{{ form.tipo_marca.id_for_label }}" class="form-label">Tipo de Marca</label>
+                        {{ form.tipo_marca }}
+                        {% if form.tipo_marca.errors %}
+                            <div class="text-danger small">{{ form.tipo_marca.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Herramienta señales orejeras -->
+                    <div class="card border-0 shadow-sm mb-3">
+                      <div class="card-header py-2" style="background:#0A2E5A;">
+                        <h6 class="mb-0 text-white">🐄 Señales Orejeras — Cortes en las orejas del animal</h6>
+                      </div>
+                      <div class="card-body p-2">
+                        <div class="bg-light rounded-3 border mb-3">
+                          <svg id="svg-orejas" viewBox="0 0 800 275" style="width:100%;display:block;">
+                            <!-- Oreja IZQUIERDA (espejada) -->
+                            <g transform="translate(800,0) scale(-1,1)">
+                              <path d="M 468,128 C 532,113 612,118 659,134 Q 681,150 659,166 C 612,182 532,187 468,172 Z" fill="#D4A76A" stroke="#8B6914" stroke-width="2"/>
+                              <line x1="490" y1="133" x2="650" y2="133" stroke="#C49A3A" stroke-width="0.7" opacity="0.35"/>
+                              <line x1="490" y1="142" x2="655" y2="142" stroke="#C49A3A" stroke-width="0.7" opacity="0.35"/>
+                              <line x1="490" y1="150" x2="656" y2="150" stroke="#C49A3A" stroke-width="0.7" opacity="0.35"/>
+                              <line x1="490" y1="158" x2="655" y2="158" stroke="#C49A3A" stroke-width="0.7" opacity="0.35"/>
+                              <line x1="490" y1="167" x2="650" y2="167" stroke="#C49A3A" stroke-width="0.7" opacity="0.35"/>
+                              <g id="marcas-izq"></g>
+                            </g>
+                            <text x="192" y="107" text-anchor="middle" font-size="12" fill="#1D4ED8" font-weight="700">IZQ</text>
+                            <!-- Oreja DERECHA -->
+                            <path d="M 468,128 C 532,113 612,118 659,134 Q 681,150 659,166 C 612,182 532,187 468,172 Z" fill="#D4A76A" stroke="#8B6914" stroke-width="2"/>
+                            <line x1="490" y1="133" x2="650" y2="133" stroke="#C49A3A" stroke-width="0.7" opacity="0.35"/>
+                            <line x1="490" y1="142" x2="655" y2="142" stroke="#C49A3A" stroke-width="0.7" opacity="0.35"/>
+                            <line x1="490" y1="150" x2="656" y2="150" stroke="#C49A3A" stroke-width="0.7" opacity="0.35"/>
+                            <line x1="490" y1="158" x2="655" y2="158" stroke="#C49A3A" stroke-width="0.7" opacity="0.35"/>
+                            <line x1="490" y1="167" x2="650" y2="167" stroke="#C49A3A" stroke-width="0.7" opacity="0.35"/>
+                            <g id="marcas-der"></g>
+                            <text x="608" y="107" text-anchor="middle" font-size="12" fill="#B91C1C" font-weight="700">DER</text>
+                            <!-- CABEZA -->
+                            <ellipse cx="468" cy="150" rx="22" ry="24" fill="#D4A76A" stroke="#8B6914" stroke-width="1.5"/>
+                            <ellipse cx="332" cy="150" rx="22" ry="24" fill="#D4A76A" stroke="#8B6914" stroke-width="1.5"/>
+                            <ellipse cx="400" cy="182" rx="73" ry="85" fill="#D4A76A" stroke="#8B6914" stroke-width="2"/>
+                            <ellipse cx="400" cy="112" rx="41" ry="31" fill="#C8996A" stroke="#8B6914" stroke-width="1.5"/>
+                            <ellipse cx="388" cy="109" rx="8" ry="6" fill="#5C2D0A"/>
+                            <ellipse cx="412" cy="109" rx="8" ry="6" fill="#5C2D0A"/>
+                            <ellipse cx="373" cy="167" rx="12" ry="9" fill="#2C1A0E"/>
+                            <ellipse cx="427" cy="167" rx="12" ry="9" fill="#2C1A0E"/>
+                            <circle cx="375" cy="164" r="3.5" fill="white"/>
+                            <circle cx="429" cy="164" r="3.5" fill="white"/>
+                            <!-- Leyenda -->
+                            <rect x="16" y="256" width="11" height="11" fill="#1D4ED8" rx="2"/>
+                            <text x="32" y="266" font-size="11" fill="#6B7280">Izquierda</text>
+                            <rect x="112" y="256" width="11" height="11" fill="#B91C1C" rx="2"/>
+                            <text x="128" y="266" font-size="11" fill="#6B7280">Derecha</text>
+                            <text id="svg-hint" x="400" y="265" text-anchor="middle" font-size="10" fill="#9CA3AF" font-style="italic">Seleccioná señales abajo para verlas en las orejas</text>
+                          </svg>
+                        </div>
+                        <!-- Tabla de señales -->
+                        <div class="table-responsive" style="max-height:320px;overflow-y:auto;">
+                          <table class="table table-sm table-hover mb-0" style="font-size:0.85rem;">
+                            <thead style="position:sticky;top:0;z-index:1;background:#f8f9fa;">
+                              <tr>
+                                <th class="ps-2">Señal</th>
+                                <th class="text-center" style="color:#1D4ED8;width:120px;">Oreja Izquierda</th>
+                                <th class="text-center" style="color:#B91C1C;width:120px;">Oreja Derecha</th>
+                              </tr>
+                            </thead>
+                            <tbody id="tbody-senales-orejeras"></tbody>
+                          </table>
+                        </div>
+                        <!-- Resumen -->
+                        <div id="resumen-orejeras" class="alert alert-info mt-2 py-2 d-none small"></div>
+                        <!-- Campo oculto -->
+                        <input type="hidden" name="senales_orejeras_json" id="senales-json-orejeras" value="{}">
+                      </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.descripcion_senal.id_for_label }}" class="form-label">Descripción de la Señal *</label>
+                        {{ form.descripcion_senal }}
+                        {% if form.descripcion_senal.errors %}
+                            <div class="text-danger small">{{ form.descripcion_senal.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h5 class="text-catamarca mb-3">Inventario de Ganado</h5>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="{{ form.vacuno.id_for_label }}" class="form-label">Vacuno</label>
+                    {{ form.vacuno }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="{{ form.caballar.id_for_label }}" class="form-label">Equino</label>
+                    {{ form.caballar }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="{{ form.mular.id_for_label }}" class="form-label">Mular</label>
+                    {{ form.mular }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="{{ form.asnal.id_for_label }}" class="form-label">Asnal</label>
+                    {{ form.asnal }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="{{ form.ovino.id_for_label }}" class="form-label">Ovino</label>
+                    {{ form.ovino }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="{{ form.cabrio.id_for_label }}" class="form-label">Caprino</label>
+                    {{ form.cabrio }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="{{ form.porcino.id_for_label }}" class="form-label">Porcino</label>
+                    {{ form.porcino }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="{{ form.camelidos.id_for_label }}" class="form-label">Camélidos</label>
+                    {{ form.camelidos }}
+                </div>
+            </div>
+            
+
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <h5 class="text-catamarca mb-3">Información Administrativa</h5>
+
+                    <div class="mb-3">
+                        <label for="{{ form.valor_sellado.id_for_label }}" class="form-label">Valor del Sellado</label>
+                        {{ form.valor_sellado }}
+                        {% if form.valor_sellado.errors %}
+                            <div class="text-danger small">{{ form.valor_sellado.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.observaciones.id_for_label }}" class="form-label">Observaciones</label>
+                        {{ form.observaciones }}
+                        {% if form.observaciones.errors %}
+                            <div class="text-danger small">{{ form.observaciones.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <h5 class="text-catamarca mb-3">Carnet</h5>
+
+                    <div class="mb-3">
+                        <label for="{{ form.imagen_carnet_frente.id_for_label }}" class="form-label">Imagen Carnet Frente</label>
+                        {{ form.imagen_carnet_frente }}
+                        {% if form.imagen_carnet_frente.errors %}
+                            <div class="text-danger small">{{ form.imagen_carnet_frente.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.imagen_carnet_dorso.id_for_label }}" class="form-label">Imagen Carnet Dorso</label>
+                        {{ form.imagen_carnet_dorso }}
+                        {% if form.imagen_carnet_dorso.errors %}
+                            <div class="text-danger small">{{ form.imagen_carnet_dorso.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-catamarca me-2">
+                    💾 Guardar Marca/Señal
+                </button>
+                <a href="{% url 'lista_marcas' %}" class="btn btn-outline-secondary">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Template para opciones de campo -->
+<template id="campoOptionsTemplate">
+    <option value="">---------</option>
+</template>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    // =====================================================
+    // CARGA DINÁMICA DE CAMPOS SEGÚN PRODUCTOR
+    // =====================================================
+    const productorSelect = document.getElementById('id_productor');
+    const campoSelect = document.getElementById('id_campo');
+    const campoHelpText = document.getElementById('campo-help-text');
+    const panelCamposMapa = document.getElementById('panel-campos-mapa');
+
+    if (productorSelect) {
+        new Choices(productorSelect, {
+            searchEnabled: true,
+            searchPlaceholderValue: 'Buscar productor por nombre o DNI...',
+            itemSelectText: '',
+            shouldSort: false,
+            noResultsText: 'No se encontraron productores',
+        });
+    }
+
+    if (productorSelect && campoSelect) {
+        productorSelect.addEventListener('change', function() {
+            const productorId = this.value;
+
+            if (!productorId) {
+                campoSelect.innerHTML = '<option value="">Seleccione un productor primero</option>';
+                campoSelect.disabled = true;
+                if (campoHelpText) {
+                    campoHelpText.textContent = 'Selecciona primero un productor para ver sus campos';
+                }
+                panelCamposMapa.style.display = 'none';
+                return;
+            }
+
+            campoSelect.innerHTML = '<option value="">Cargando campos...</option>';
+            campoSelect.disabled = true;
+
+            cargarCamposDelProductor(productorId);
+        });
+
+        if (productorSelect.value) {
+            setTimeout(function() {
+                productorSelect.dispatchEvent(new Event('change'));
+            }, 0);
+        }
+    }
+
+    // =====================================================
+    // MAPA DE CAMPOS DEL PRODUCTOR (Leaflet Draw)
+    // =====================================================
+    const listaCamposExistentes = document.getElementById('lista-campos-existentes');
+    const bloqueNuevoCampo = document.getElementById('bloque-nuevo-campo');
+    const bloqueEditarCampo = document.getElementById('bloque-editar-campo');
+    const editandoCampoNombre = document.getElementById('editando-campo-nombre');
+    const btnConfirmarCampo = document.getElementById('btn-confirmar-campo');
+    const btnGuardarEdicion = document.getElementById('btn-guardar-edicion');
+    const btnCancelarEdicion = document.getElementById('btn-cancelar-edicion');
+    const ncError = document.getElementById('nc-error');
+    const ncAreaInfo = document.getElementById('nc-area-info');
+
+    let mapCampo = null;
+    let drawnItemsNuevo = null;   // capa del polígono nuevo (naranja, editable)
+    let capaExistentes = null;    // capa de campos ya guardados (verde, solo lectura)
+    let drawControl = null;
+    let poligonoNuevo = null;
+    let campoEnEdicionId = null;
+    let layerEnEdicion = null;
+    let camposLayersById = {};    // { campoId: layerLeaflet } — referencia directa para editar
+    let campoSinPoligonoId = null; // si estoy dibujando el polígono de un campo YA existente sin poligono
+
+    function initMapCampo() {
+        if (mapCampo) return;
+
+        mapCampo = L.map('map-campo').setView([-28.4696, -65.7852], 8);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri'
+        }).addTo(mapCampo);
+
+        L.Control.geocoder({
+            defaultMarkGeocode: false,
+            position: 'topright',
+            placeholder: 'Buscar localidad o dirección...',
+            errorMessage: 'No se encontró la ubicación.'
+        }).on('markgeocode', function(e) {
+            mapCampo.setView(e.geocode.center, 14);
+        }).addTo(mapCampo);
+
+        capaExistentes = L.layerGroup().addTo(mapCampo);
+        drawnItemsNuevo = new L.FeatureGroup();
+        mapCampo.addLayer(drawnItemsNuevo);
+
+        drawControl = new L.Control.Draw({
+            draw: {
+                polygon: {
+                    allowIntersection: false,
+                    showArea: true,
+                    shapeOptions: { color: '#fd7e14' }
+                },
+                polyline: false,
+                rectangle: false,
+                circle: false,
+                circlemarker: false,
+                marker: false
+            },
+            edit: {
+                featureGroup: drawnItemsNuevo,
+                remove: true
+            }
+        });
+        mapCampo.addControl(drawControl);
+
+        mapCampo.on(L.Draw.Event.CREATED, function(e) {
+            drawnItemsNuevo.clearLayers();
+            drawnItemsNuevo.addLayer(e.layer);
+            poligonoNuevo = e.layer;
+            actualizarAreaInfo(e.layer);
+            btnConfirmarCampo.disabled = false;
+
+            document.getElementById('nc-distrito').value = '';
+            document.getElementById('nc-departamento').value = '';
+            const centro = calcularCentroide(e.layer.getLatLngs()[0]);
+            reverseGeocodeCampo(centro.lat, centro.lng);
+        });
+
+        mapCampo.on(L.Draw.Event.EDITED, function(e) {
+            e.layers.eachLayer(function(layer) {
+                if (layer === poligonoNuevo) {
+                    actualizarAreaInfo(layer);
+                }
+            });
+        });
+
+        mapCampo.on(L.Draw.Event.DELETED, function() {
+            poligonoNuevo = null;
+            btnConfirmarCampo.disabled = true;
+            ncAreaInfo.textContent = 'Área del polígono: —';
+        });
+    }
+
+    function actualizarAreaInfo(layer) {
+        const latlngs = layer.getLatLngs()[0];
+        const areaM2 = geodesicArea(latlngs);
+        const areaHa = (areaM2 / 10000).toFixed(2);
+        ncAreaInfo.textContent = `Área del polígono: ${areaHa} ha (aprox.)`;
+    }
+
+    function geodesicArea(latLngs) {
+        let area = 0;
+        const R = 6378137;
+        if (latLngs.length > 2) {
+            for (let i = 0; i < latLngs.length; i++) {
+                const p1 = latLngs[i];
+                const p2 = latLngs[(i + 1) % latLngs.length];
+                area += (p2.lng - p1.lng) * Math.PI / 180 *
+                        (2 + Math.sin(p1.lat * Math.PI / 180) + Math.sin(p2.lat * Math.PI / 180));
+            }
+            area = area * R * R / 2;
+        }
+        return Math.abs(area);
+    }
+
+    function calcularCentroide(latlngs) {
+        let lat = 0, lng = 0;
+        latlngs.forEach(function(p) { lat += p.lat; lng += p.lng; });
+        return { lat: lat / latlngs.length, lng: lng / latlngs.length };
+    }
+
+    function reverseGeocodeCampo(lat, lng) {
+        const distritoInput = document.getElementById('nc-distrito');
+        const departamentoInput = document.getElementById('nc-departamento');
+        distritoInput.placeholder = 'Buscando...';
+
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=es`)
+            .then(response => response.json())
+            .then(data => {
+                distritoInput.placeholder = 'Se completa al dibujar';
+                if (!data || !data.address) return;
+
+                const address = data.address;
+                const localidad = address.village || address.town || address.city || address.hamlet || '';
+                const departamento = address.state_district || address.county || address.municipality || '';
+
+                if (localidad && !distritoInput.value.trim()) {
+                    distritoInput.value = localidad;
+                }
+                if (departamento && !departamentoInput.value.trim()) {
+                    departamentoInput.value = departamento.replace('Departamento ', '');
+                }
+            })
+            .catch(error => {
+                console.error('Error en reverse geocoding:', error);
+                distritoInput.placeholder = 'Se completa al dibujar';
+            });
+    }
+
+    function salirModoEdicion() {
+        if (layerEnEdicion) {
+            layerEnEdicion.editing.disable();
+            layerEnEdicion.setStyle({ color: '#198754', weight: 3 });
+        }
+        campoEnEdicionId = null;
+        layerEnEdicion = null;
+        bloqueEditarCampo.style.display = 'none';
+        bloqueNuevoCampo.style.display = 'block';
+    }
+
+    function cargarCamposDelProductor(productorId) {
+        panelCamposMapa.style.display = 'block';
+        initMapCampo();
+        setTimeout(function() { mapCampo.invalidateSize(); }, 100);
+
+        // Reset estado
+        drawnItemsNuevo.clearLayers();
+        capaExistentes.clearLayers();
+        poligonoNuevo = null;
+        campoSinPoligonoId = null;
+        camposLayersById = {};
+        btnConfirmarCampo.disabled = true;
+        ncAreaInfo.textContent = 'Área del polígono: —';
+        salirModoEdicion();
+        listaCamposExistentes.innerHTML = '<div class="text-muted small">Cargando campos...</div>';
+
+        fetch(`/ajax/campos/${productorId}/`)
+            .then(response => response.json())
+            .then(data => {
+                campoSelect.innerHTML = '<option value="">---------</option>';
+                listaCamposExistentes.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    campoSelect.innerHTML = '<option value="">No hay campos registrados</option>';
+                    listaCamposExistentes.innerHTML = '<div class="text-muted small">Este productor todavía no tiene campos delimitados.</div>';
+                    return;
+                }
+
+                let boundsAll = [];
+
+                data.forEach(campo => {
+                    const option = document.createElement('option');
+                    option.value = campo.id;
+                    option.textContent = campo.distrito
+                        ? `${campo.nombre} (${campo.distrito})`
+                        : campo.nombre;
+                    campoSelect.appendChild(option);
+
+                    if (campo.poligono) {
+                        const layer = L.geoJSON(campo.poligono, {
+                            style: { color: '#198754', weight: 3, fillOpacity: 0.25 }
+                        }).addTo(capaExistentes);
+                        layer.bindTooltip(campo.nombre, { permanent: false });
+                        layer.eachLayer(function(l) {
+                            boundsAll.push(l.getBounds());
+                            camposLayersById[campo.id] = l;
+                        });
+                    }
+
+                    // Fila en la lista con botón editar / dibujar
+                    const div = document.createElement('div');
+                    div.className = 'd-flex justify-content-between align-items-center border-bottom py-1 small';
+                    div.innerHTML = `<span>${campo.nombre}${campo.poligono ? '' : ' <em class="text-muted">(sin polígono)</em>'}</span>`;
+
+                    if (campo.poligono) {
+                        const btnEditar = document.createElement('button');
+                        btnEditar.type = 'button';
+                        btnEditar.className = 'btn btn-outline-warning btn-sm py-0';
+                        btnEditar.textContent = '✏️ Editar';
+                        btnEditar.addEventListener('click', function() {
+                            iniciarEdicionCampo(campo.id, campo.nombre);
+                        });
+                        div.appendChild(btnEditar);
+                    } else {
+                        const btnDibujar = document.createElement('button');
+                        btnDibujar.type = 'button';
+                        btnDibujar.className = 'btn btn-outline-primary btn-sm py-0';
+                        btnDibujar.textContent = '➕ Dibujar polígono';
+                        btnDibujar.addEventListener('click', function() {
+                            iniciarDibujoParaCampoExistente(campo.id, campo.nombre);
+                        });
+                        div.appendChild(btnDibujar);
+                    }
+                    listaCamposExistentes.appendChild(div);
+                });
+
+                if (boundsAll.length > 0) {
+                    let combined = boundsAll[0];
+                    boundsAll.forEach(b => { combined = combined.extend(b); });
+                    mapCampo.fitBounds(combined, { padding: [20, 20] });
+                }
+
+                campoSelect.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                listaCamposExistentes.innerHTML = '<div class="text-danger small">Error al cargar campos.</div>';
+            });
+    }
+
+    function iniciarEdicionCampo(campoId, nombre) {
+        salirModoEdicion();
+        drawnItemsNuevo.clearLayers();
+        poligonoNuevo = null;
+        campoSinPoligonoId = null;
+        btnConfirmarCampo.disabled = true;
+
+        layerEnEdicion = camposLayersById[campoId];
+        if (!layerEnEdicion) {
+            ncError.textContent = 'No se encontró el polígono de este campo en el mapa.';
+            ncError.style.display = 'block';
+            return;
+        }
+
+        layerEnEdicion.setStyle({ color: '#dc3545', weight: 4 });
+        layerEnEdicion.editing.enable();
+        campoEnEdicionId = campoId;
+        editandoCampoNombre.textContent = nombre;
+        bloqueNuevoCampo.style.display = 'none';
+        bloqueEditarCampo.style.display = 'block';
+        mapCampo.fitBounds(layerEnEdicion.getBounds(), { padding: [20, 20] });
+    }
+
+    function iniciarDibujoParaCampoExistente(campoId, nombre) {
+        salirModoEdicion();
+        drawnItemsNuevo.clearLayers();
+        poligonoNuevo = null;
+        btnConfirmarCampo.disabled = true;
+        ncAreaInfo.textContent = 'Área del polígono: —';
+
+        campoSinPoligonoId = campoId;
+        document.getElementById('nc-nombre').value = nombre;
+        ncError.style.display = 'none';
+
+        panelCamposMapa.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    if (btnCancelarEdicion) {
+        btnCancelarEdicion.addEventListener('click', function() {
+            salirModoEdicion();
+        });
+    }
+
+    if (btnGuardarEdicion) {
+        btnGuardarEdicion.addEventListener('click', function() {
+            if (!layerEnEdicion || !campoEnEdicionId) return;
+
+            const geojson = layerEnEdicion.toGeoJSON().geometry;
+            const formData = new FormData();
+            formData.append('poligono_geojson', JSON.stringify(geojson));
+
+            btnGuardarEdicion.disabled = true;
+            btnGuardarEdicion.textContent = 'Guardando...';
+
+            fetch(`/ajax/campos/${campoEnEdicionId}/actualizar-poligono/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                btnGuardarEdicion.disabled = false;
+                btnGuardarEdicion.textContent = '💾 Guardar cambios del polígono';
+
+                if (!data.ok) {
+                    ncError.textContent = data.error || 'Error al guardar los cambios.';
+                    ncError.style.display = 'block';
+                    return;
+                }
+                ncError.style.display = 'none';
+                salirModoEdicion();
+                cargarCamposDelProductor(productorSelect.value);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                btnGuardarEdicion.disabled = false;
+                btnGuardarEdicion.textContent = '💾 Guardar cambios del polígono';
+                ncError.textContent = 'Error de conexión al guardar los cambios.';
+                ncError.style.display = 'block';
+            });
+        });
+    }
+
+    if (btnConfirmarCampo) {
+        btnConfirmarCampo.addEventListener('click', function() {
+            ncError.style.display = 'none';
+
+            const nombre = document.getElementById('nc-nombre').value.trim();
+            if (!nombre) {
+                ncError.textContent = 'Ingresá un nombre para el campo.';
+                ncError.style.display = 'block';
+                return;
+            }
+            if (!poligonoNuevo) {
+                ncError.textContent = 'Dibujá el polígono del campo en el mapa.';
+                ncError.style.display = 'block';
+                return;
+            }
+
+            const geojson = poligonoNuevo.toGeoJSON().geometry;
+            const esCompletarExistente = !!campoSinPoligonoId;
+            const areaHa = (geodesicArea(poligonoNuevo.getLatLngs()[0]) / 10000).toFixed(2);
+
+            const formData = new FormData();
+            formData.append('poligono_geojson', JSON.stringify(geojson));
+            formData.append('nombre', nombre);
+            formData.append('distrito', document.getElementById('nc-distrito').value.trim());
+            formData.append('departamento', document.getElementById('nc-departamento').value.trim());
+            formData.append('area_hectareas', areaHa);
+
+            const url = esCompletarExistente
+                ? `/ajax/campos/${campoSinPoligonoId}/actualizar-poligono/`
+                : '{% url "ajax_crear_campo_poligono" %}';
+
+            if (!esCompletarExistente) {
+                formData.append('productor_id', productorSelect.value);
+            }
+
+            btnConfirmarCampo.disabled = true;
+            btnConfirmarCampo.textContent = 'Guardando...';
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                btnConfirmarCampo.disabled = false;
+                btnConfirmarCampo.textContent = '✅ Guardar nuevo campo';
+
+                if (!data.ok) {
+                    ncError.textContent = data.error || 'Error al guardar el campo.';
+                    ncError.style.display = 'block';
+                    return;
+                }
+
+                const campoIdGuardado = data.campo.id;
+
+                document.getElementById('nc-nombre').value = '';
+                drawnItemsNuevo.clearLayers();
+                poligonoNuevo = null;
+                campoSinPoligonoId = null;
+
+                cargarCamposDelProductor(productorSelect.value);
+                setTimeout(function() {
+                    campoSelect.value = campoIdGuardado;
+                }, 300);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                btnConfirmarCampo.disabled = false;
+                btnConfirmarCampo.textContent = '✅ Guardar nuevo campo';
+                ncError.textContent = 'Error de conexión al guardar el campo.';
+                ncError.style.display = 'block';
+            });
+        });
+    }
+
+    // =====================================================
+    // CARGA DE IMÁGENES PREDEFINIDAS (SELECCIÓN MÚLTIPLE)
+    // =====================================================
+    
+});
+
+
+// =====================================================
+// GALERÍA PAGINADA DE IMÁGENES PREDEFINIDAS
+// =====================================================
+let _todasLasImagenes = [];
+let _paginaActual = 1;
+const _POR_PAGINA = 8;
+
+/* ELIMINE LA CARGA DE IMAGENESPREDEFINIDAS */
+
+/* ELIMINE EL RENDERIZARPAGINA */
+
+/* ELIMINE ACTUALIZARBADGESELECCIONADAS */
+
+
+// =====================================================
+// PREVIEW DE IMÁGENES SELECCIONADAS
+// =====================================================
+/* ELIMINE ACTUALIZARPREVIEWIMAGENES */
+
+
+
+// ── Señales Orejeras ──────────────────────────────────────────
+(function(){
+var LC="#1D4ED8", RC="#B91C1C";
+var SENALES=[
+ {k:"trebol",n:"Trébol"},
+ {k:"cuad_punta",n:"Cuadrado en la Punta"},
+ {k:"cuad_abajo",n:"Cuadrado de Abajo"},
+ {k:"cuad_arriba",n:"Cuadrado de Arriba"},
+ {k:"anz_abajo",n:"Anzuelo de Abajo"},
+ {k:"anz_arriba",n:"Anzuelo de Arriba"},
+ {k:"zarc_abajo",n:"Zarcillo de Abajo"},
+ {k:"zarc_arriba",n:"Zarcillo de Arriba"},
+ {k:"raja_punta",n:"Raja en la Punta"},
+ {k:"tajo_abajo",n:"Tajo de Abajo"},
+ {k:"tajo_arriba",n:"Tajo de Arriba"},
+ {k:"ojo_llave",n:"Ojo de Llave"},
+ {k:"agujero",n:"Agujero en el Centro"},
+ {k:"hoja_hig",n:"Hoja de Higuera"},
+ {k:"pta_lanza",n:"Punta de Lanza"},
+ {k:"horq_punta",n:"Horqueta en la Punta"},
+ {k:"horq_abajo",n:"Horqueta de Abajo"},
+ {k:"horq_arriba",n:"Horqueta de Arriba"},
+ {k:"sacado_abajo",n:"Sacado de Abajo"},
+ {k:"sacado_arr",n:"Sacado de Arriba"},
+ {k:"muesca_abajo",n:"Muesca de Abajo"},
+ {k:"muesca_arr",n:"Muesca de Arriba"}
+];
+
+function shape(k,col){
+ var op=0.88,sw=2;
+ var f='fill="'+col+'" stroke="'+col+'" stroke-width="'+sw+'" opacity="'+op+'" stroke-linejoin="round"';
+ var s='fill="none" stroke="'+col+'" stroke-width="5.5" opacity="'+op+'" stroke-linecap="round"';
+ switch(k){
+  case"trebol": return '<circle cx="663" cy="141" r="9" '+f+'/><circle cx="675" cy="154" r="9" '+f+'/><circle cx="651" cy="154" r="9" '+f+'/>';
+  case"cuad_punta": return '<rect x="648" y="132" width="35" height="33" '+f+'/>';
+  case"cuad_abajo": return '<rect x="539" y="167" width="32" height="25" '+f+'/>';
+  case"cuad_arriba": return '<rect x="539" y="107" width="32" height="25" '+f+'/>';
+  case"anz_abajo": return '<path d="M574,174 C574,195 553,199 546,183 C539,167 548,155 561,155" '+s+'/>';
+  case"anz_arriba": return '<path d="M574,126 C574,105 553,101 546,117 C539,133 548,145 561,145" '+s+'/>';
+  case"zarc_abajo": return '<path d="M614,163 L614,183 Q607,191 600,183 L600,163" '+f+'/>';
+  case"zarc_arriba": return '<path d="M614,137 L614,117 Q607,109 600,117 L600,137" '+f+'/>';
+  case"raja_punta": return '<rect x="640" y="147" width="43" height="6" rx="3" '+f+'/>';
+  case"tajo_abajo": return '<path d="M535,174 L562,174 L554,158 Z" '+f+'/>';
+  case"tajo_arriba": return '<path d="M535,126 L562,126 L554,142 Z" '+f+'/>';
+  case"ojo_llave": return '<circle cx="561" cy="141" r="12" '+f+'/><rect x="556" y="150" width="10" height="19" '+f+'/>';
+  case"agujero": return '<circle cx="561" cy="150" r="14" '+f+'/>';
+  case"hoja_hig": return '<path d="M682,150 C669,130 646,128 652,150 C646,172 669,170 682,150 M658,128 C655,116 641,118 647,128 M658,172 C655,184 641,182 647,172" '+f+' stroke-width="1.5"/>';
+  case"pta_lanza": return '<path d="M645,129 L683,150 L645,171 L658,150 Z" '+f+'/>';
+  case"horq_punta": return '<path d="M647,129 C664,138 683,148 664,159 C645,170 644,170 644,170" '+s+' stroke-width="4.5"/>';
+  case"horq_abajo": return '<path d="M537,174 Q558,199 579,174" '+s+'/>';
+  case"horq_arriba": return '<path d="M537,126 Q558,101 579,126" '+s+'/>';
+  case"sacado_abajo": return '<path d="M529,174 Q560,210 591,174 Z" '+f+'/>';
+  case"sacado_arr": return '<path d="M529,126 Q560,90 591,126 Z" '+f+'/>';
+  case"muesca_abajo": return '<path d="M470,174 L484,160 L498,174 Z" '+f+'/>';
+  case"muesca_arr": return '<path d="M470,126 L484,140 L498,126 Z" '+f+'/>';
+  default: return "";
+ }
+}
+
+var cnt={};
+SENALES.forEach(function(s){ cnt[s.k]={i:0,d:0}; });
+
+function renderSenales(){
+ var gi=document.getElementById("marcas-izq");
+ var gd=document.getElementById("marcas-der");
+ if(gi) gi.innerHTML="";
+ if(gd) gd.innerHTML="";
+ var any=false;
+ SENALES.forEach(function(s){
+  if(cnt[s.k].i>0&&gi){ gi.innerHTML+=shape(s.k,LC); any=true; }
+  if(cnt[s.k].d>0&&gd){ gd.innerHTML+=shape(s.k,RC); any=true; }
+  var row=document.getElementById("sor-"+s.k);
+  if(row) row.style.background=(cnt[s.k].i||cnt[s.k].d)?"#EFF6FF":"";
+  ["i","d"].forEach(function(e){
+   var sp=document.getElementById("ct-"+s.k+"-"+e);
+   if(sp) sp.textContent=cnt[s.k][e];
+   var bm=document.getElementById("bm-"+s.k+"-"+e);
+   if(bm){ bm.disabled=cnt[s.k][e]===0; bm.style.opacity=cnt[s.k][e]===0?"0.35":"1"; }
+  });
+ });
+ var hint=document.getElementById("svg-hint");
+ if(hint) hint.setAttribute("visibility",any?"hidden":"visible");
+ var il=SENALES.filter(function(s){return cnt[s.k].i>0;})
+        .map(function(s){return cnt[s.k].i>1?s.n+" (x"+cnt[s.k].i+")":s.n;}).join(", ");
+ var dl=SENALES.filter(function(s){return cnt[s.k].d>0;})
+        .map(function(s){return cnt[s.k].d>1?s.n+" (x"+cnt[s.k].d+")":s.n;}).join(", ");
+ var res=document.getElementById("resumen-orejeras");
+ if(res){
+  if(il||dl){
+   res.classList.remove("d-none");
+   res.innerHTML=(il?"<strong>Izquierda:</strong> <span style='color:"+LC+"'>"+il+"</span><br>":"")+
+                 (dl?"<strong>Derecha:</strong> <span style='color:"+RC+"'>"+dl+"</span>":"");
+  } else { res.classList.add("d-none"); }
+ }
+ var out={};
+ SENALES.forEach(function(s){
+  if(cnt[s.k].i>0){if(!out.izquierda)out.izquierda=[];for(var j=0;j<cnt[s.k].i;j++)out.izquierda.push(s.n);}
+  if(cnt[s.k].d>0){if(!out.derecha)out.derecha=[];for(var j=0;j<cnt[s.k].d;j++)out.derecha.push(s.n);}
+ });
+ var fld=document.getElementById("senales-json-orejeras");
+ if(fld) fld.value=JSON.stringify(out);
+}
+
+(function buildTable(){
+ var tb=document.getElementById("tbody-senales-orejeras");
+ if(!tb) return;
+ SENALES.forEach(function(s){
+  var tr=document.createElement("tr");
+  tr.id="sor-"+s.k;
+  tr.style.transition="background 0.15s";
+  function cell(ear,col){
+   return '<td class="text-center align-middle"><div class="d-inline-flex align-items-center gap-1">'+
+    '<button type="button" id="bm-'+s.k+'-'+ear+'" disabled '+
+    'onclick="window.__adj(\''+s.k+'\',\''+ear+'\',-1)" '+
+    'style="width:24px;height:24px;border:1px solid '+col+';border-radius:5px;'+
+    'background:transparent;color:'+col+';font-size:16px;line-height:1;padding:0;cursor:pointer;opacity:0.35;">−</button>'+
+    '<span id="ct-'+s.k+'-'+ear+'" style="min-width:18px;text-align:center;font-weight:600;font-size:13px;color:'+col+';">0</span>'+
+    '<button type="button" '+
+    'onclick="window.__adj(\''+s.k+'\',\''+ear+'\',1)" '+
+    'style="width:24px;height:24px;border:1px solid '+col+';border-radius:5px;'+
+    'background:transparent;color:'+col+';font-size:16px;line-height:1;padding:0;cursor:pointer;">+</button>'+
+    '</div></td>';
+  }
+  tr.innerHTML='<td class="ps-2 align-middle">'+s.n+'</td>'+cell("i",LC)+cell("d",RC);
+  tb.appendChild(tr);
+ });
+ renderSenales();
+})();
+
+window.__adj=function(k,ear,v){
+ cnt[k][ear]=Math.max(0,cnt[k][ear]+v);
+ renderSenales();
+};
+
+// Pre-cargar señales si estamos editando
+(function(){
+ var guardadas = null;
+ try {
+  guardadas = JSON.parse('{{ senales_guardadas|default:"{}"|escapejs }}');
+ } catch(e) { return; }
+ if (!guardadas) return;
+
+ var nombres = {};
+ SENALES.forEach(function(s){ nombres[s.n] = s.k; });
+
+ if (guardadas.izquierda) {
+  guardadas.izquierda.forEach(function(nombre){
+   var k = nombres[nombre];
+   if (k) cnt[k].i++;
+  });
+ }
+ if (guardadas.derecha) {
+  guardadas.derecha.forEach(function(nombre){
+   var k = nombres[nombre];
+   if (k) cnt[k].d++;
+  });
+ }
+ renderSenales();
+})();
+})();
+</script>
+
+
+
+<!-- ELIMINE EL BLOQUE STYLE PORQUE SOLO ERA DE LAS MARCAS -->
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+{% endblock %}
